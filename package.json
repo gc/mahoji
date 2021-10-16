@@ -1,0 +1,34 @@
+{
+  "name": "mahoji",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev:build": "tsc -p src",
+    "dev:lint": "eslint \"{src,tests}/**/*.ts\" --fix",
+    "dev:watch": "tsc -w -p src",
+    "test": "yarn test:build && yarn test:run",
+    "test:build": "tsc -p tests",
+    "test:run": "jest --runInBand --coverage --verbose",
+    "test:watch": "yarn test:wipefolder && nodemon --config nodemon.json",
+    "test:wipefolder": "rimraf \"compiledtests/\""
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@sapphire/utilities": "^2.0.1",
+    "fastify": "^3.21.0",
+    "fastify-sensible": "^3.1.1",
+    "node-fetch": "^2.6.3"
+  },
+  "devDependencies": {
+    "@oldschoolgg/eslint-config": "^1.2.4",
+    "@types/jest": "^26.0.23",
+    "@types/node": "^16.9.0",
+    "@types/node-fetch": "^2.5.3",
+    "discord-api-types": "0.24.0-next.7db6953.1633523385",
+    "eslint": "^7.32.0",
+    "jest": "^27.0.1",
+    "nodemon": "^2.0.12",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.4.3"
+  }
+}

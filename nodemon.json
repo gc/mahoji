@@ -1,0 +1,6 @@
+{
+  "watch": ["src", "tests"],
+  "ext": "ts,js,json",
+  "exec": "yarn test",
+  "legacyWatch": true
+}
