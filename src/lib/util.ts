@@ -23,7 +23,7 @@ export function isValidCommand(data: any): data is ICommand {
 		!data.description ||
 		typeof data.description !== 'string' ||
 		data.description.length < 1 ||
-		data.description.length > 32
+		data.description.length > 100
 	) {
 		return false;
 	}
