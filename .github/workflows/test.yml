@@ -33,8 +33,6 @@ jobs:
             - name: Test
               run: yarn test
             - name: Coverage
-            - uses: actions/checkout@master
-            - uses: codecov/codecov-action@v2
+              uses: codecov/codecov-action@v2
               with:
-                token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
                 files: ./coverage/coverage-final.json
