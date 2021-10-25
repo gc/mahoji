@@ -97,15 +97,15 @@ export class MahojiClient {
 				const apiOptions = (interaction.data.options ??
 					[]) as APIApplicationCommandInteractionDataOptionWithValues[];
 				const options: Record<string, APIApplicationCommandInteractionDataOptionWithValues['value']> = {};
-				new SlashCommandInteraction(interaction);
+				const slashCommandInteraction = new SlashCommandInteraction(interaction);
 				for (const { name, value } of apiOptions) {
 					options[name] = value;
 				}
 				const command = this.commands.pieces.get(interaction.data.name);
 				if (command) {
 					const response = await command.run({
-						interaction,
-						options,
+						interaction: slashCommandInteraction,
+						options: slashCommandInteraction.options,
 						client: this
 					});
 					const apiResponse: APIInteractionResponse =

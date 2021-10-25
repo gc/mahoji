@@ -1,5 +1,4 @@
 import type {
-	APIApplicationCommandInteraction,
 	APIInteractionDataResolvedChannel,
 	APIInteractionDataResolvedGuildMember,
 	APIInteractionResponseCallbackData,
@@ -9,6 +8,7 @@ import type {
 } from 'discord-api-types/v9';
 
 import type { MahojiClient } from '..';
+import type { SlashCommandInteraction } from './structures/SlashCommandInteraction';
 
 export type { APIApplicationCommandOption, APIChatInputApplicationCommandInteraction } from 'discord-api-types/v9';
 
@@ -50,7 +50,7 @@ export type CommandOptions = Record<
 >;
 
 export interface CommandRunOptions<T extends CommandOptions = {}> {
-	interaction: APIApplicationCommandInteraction;
+	interaction: SlashCommandInteraction;
 	options: T;
 	client: MahojiClient;
 }

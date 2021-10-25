@@ -7,18 +7,18 @@ export const modActionsCommand: ICommand = {
 	options: [
 		{
 			name: 'kick',
-			description: 'Get or edit permissions for a user',
+			description: 'Get ofr edit permissions for a user',
 			type: ApplicationCommandOptionType.SubcommandGroup,
 			options: [
 				{
 					name: 'get',
 					description: 'Get permissions for a user',
-					type: 1, // 1 is type SUB_COMMAND
+					type: 1,
 					options: [
 						{
 							name: 'user',
 							description: 'The user to get',
-							type: 6, // 6 is type USER
+							type: 6,
 							required: true
 						}
 					]
@@ -39,6 +39,24 @@ export const modActionsCommand: ICommand = {
 							name: 'user',
 							description: 'The user to ban',
 							type: ApplicationCommandOptionType.User,
+							required: true
+						},
+						{
+							name: 'channel',
+							description: 'Get or edit permissions for a role',
+							type: ApplicationCommandOptionType.Channel,
+							required: true
+						},
+						{
+							name: 'role',
+							description: 'Get or edit permissions for a role',
+							type: ApplicationCommandOptionType.Role,
+							required: true
+						},
+						{
+							name: 'mentionable',
+							description: 'Mentionable',
+							type: ApplicationCommandOptionType.Mentionable,
 							required: true
 						}
 					]

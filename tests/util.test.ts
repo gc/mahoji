@@ -5,6 +5,7 @@ import {
 	convertCommandToCachedCommand,
 	isValidCommand
 } from '../src/lib/util';
+import { commandInteractionModActions } from './data/command_interaction';
 import { mockCommand } from './testUtil';
 
 describe('utils', () => {
@@ -67,84 +68,33 @@ describe('utils', () => {
 		}
 	});
 	test('convertAPIOptionsToCommandOptions', async () => {
-		const testData = {
-			application_id: '661440240656842762',
-			channel_id: '892304844306653204',
-			data: {
-				id: '901750719596613662',
-				name: 'modactions',
-				options: [
-					{
-						name: 'ban',
-						options: [
-							{
-								name: 'user',
-								options: [
-									{
-										name: 'user',
-										type: 6,
-										value: '157797566833098752'
-									}
-								],
-								type: 1
-							}
-						],
-						type: 2
-					}
-				],
-				resolved: {
-					members: {
-						'157797566833098752': {
-							avatar: null,
-							is_pending: false,
-							joined_at: '2016-12-15T17:24:26.926000+00:00',
-							nick: null,
-							pending: false,
-							permissions: '1099511627775',
-							premium_since: null,
-							roles: ['645508567457202176', '574491033660948485']
-						}
-					},
-					users: {
-						'157797566833098752': {
-							avatar: 'a_58c11318d45efbde40e37dd1ac7408b0',
-							discriminator: '7556',
-							id: '157797566833098752',
-							public_flags: 131_712,
-							username: 'Magnaboy'
-						}
-					}
-				},
-				type: 1
-			},
-			guild_id: '228822415189344257',
-			id: '901847193785348156',
-			member: {
-				avatar: null,
-				deaf: false,
-				is_pending: false,
-				joined_at: '2016-12-15T17:24:26.926000+00:00',
-				mute: false,
-				nick: null,
-				pending: false,
-				permissions: '1099511627775',
-				premium_since: null,
-				roles: ['645508567457202176', '574491033660948485'],
-				user: {
-					avatar: 'a_58c11318d45efbde40e37dd1ac7408b0',
-					discriminator: '7556',
-					id: '157797566833098752',
-					public_flags: 131_712,
-					username: 'Magnaboy'
-				}
-			},
-			token: 'aW50ZXJhY3Rpb246OTAxODQ3MTkzNzg1MzQ4MTU2OlppVFlla2ZDNGVubzJzcm9LeG44NE5yODNMY1N2SXVKZlVjbE5PQ2E5TjJDU204VVNzSUdrNHE4M3JCb0dGbzc5Q3l5QnBsRlRDWHhzNzVybzEzZ1NaUjkyVm5LajdNU2gyR2M2R21naExOWUxodkRMY0dHVjlaejV4a2hzRnBV',
-			type: 2,
-			version: 1
-		};
 		expect(convertAPIOptionsToCommandOptions(undefined, {})).toStrictEqual({});
 		expect(convertAPIOptionsToCommandOptions([], {})).toStrictEqual({});
-		expect(convertAPIOptionsToCommandOptions(testData.data.options, testData.data.resolved)).toStrictEqual({
+		expect(
+			convertAPIOptionsToCommandOptions(
+				commandInteractionModActions.data.options,
+				commandInteractionModActions.data.resolved
+			)
+		).toStrictEqual({
+			channel: {
+				id: '645509578489987082',
+				name: 'general',
+				permissions: '1099511627775',
+				type: 0
+			},
+			mentionable: '157797566833098752',
+			role: {
+				color: 0,
+				hoist: false,
+				icon: null,
+				id: '228822415189344257',
+				managed: false,
+				mentionable: false,
+				name: '@everyone',
+				permissions: '1071631420993',
+				position: 0,
+				unicode_emoji: null
+			},
 			user: {
 				member: {
 					avatar: null,

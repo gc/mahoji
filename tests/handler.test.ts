@@ -210,4 +210,27 @@ describe('server handles requests', () => {
 		expect(response.json()).toStrictEqual({ error: 'Not Found', message: 'Not Found', statusCode: 404 });
 		await close();
 	});
+
+	test('handles commands with subcommands', async () => {
+		const { client, makeHeaders, close } = await mockClient();
+
+		const commandInteraction: APIChatInputApplicationCommandInteraction = {
+			...commandInteractionBase,
+			data: {
+				id: mockSnowflake,
+				name: mockCommand.name,
+				type: 1,
+				options: []
+			}
+		};
+		const payload = JSON.stringify(commandInteraction);
+
+		const response = await client.server.inject({
+			...baseRequest,
+			payload,
+			headers: await makeHeaders(payload)
+		});
+		expect(response.json()).toStrictEqual({ error: 'Not Found', message: 'Not Found', statusCode: 404 });
+		await close();
+	});
 });
