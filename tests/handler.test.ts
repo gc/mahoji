@@ -1,4 +1,9 @@
-import { APIChatInputApplicationCommandInteraction, APIPingInteraction, InteractionType } from 'discord-api-types';
+import {
+	APIApplicationCommandInteraction,
+	APIChatInputApplicationCommandInteraction,
+	APIPingInteraction,
+	InteractionType
+} from 'discord-api-types/v9';
 
 import { Time } from '../src/lib/util';
 import { mockClient, mockCommand, mockMember, mockSnowflake } from './testUtil';
@@ -119,12 +124,13 @@ describe('server handles requests', () => {
 
 		client.commands.pieces.set(mockCommand.name, mockCommand);
 
-		const commandInteraction: APIChatInputApplicationCommandInteraction = {
+		const commandInteraction: APIApplicationCommandInteraction = {
 			...commandInteractionBase,
 			data: {
 				id: mockSnowflake,
 				name: mockCommand.name,
-				type: 1
+				type: 1,
+				options: []
 			}
 		};
 		const payload = JSON.stringify(commandInteraction);
@@ -151,7 +157,19 @@ describe('server handles requests', () => {
 			data: {
 				id: mockSnowflake,
 				name: 'ping',
-				type: 1
+				type: 1,
+				options: [
+					{
+						name: 'name',
+						type: 3,
+						value: 'kyra'
+					},
+					{
+						name: 'quantity',
+						type: 3,
+						value: 5
+					}
+				]
 			}
 		};
 		const payload = JSON.stringify(commandInteraction);
@@ -163,7 +181,7 @@ describe('server handles requests', () => {
 		});
 		expect(response.json()).toStrictEqual({
 			data: {
-				content: 'Magnaboy, Pong!'
+				content: 'kyra, Pong!'.repeat(5)
 			},
 			type: 4
 		});
@@ -178,7 +196,8 @@ describe('server handles requests', () => {
 			data: {
 				id: mockSnowflake,
 				name: mockCommand.name,
-				type: 1
+				type: 1,
+				options: []
 			}
 		};
 		const payload = JSON.stringify(commandInteraction);

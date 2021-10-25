@@ -1,7 +1,7 @@
 import type {
 	APIApplicationCommandInteraction,
-	APIChannel,
-	APIGuildMember,
+	APIInteractionDataResolvedChannel,
+	APIInteractionDataResolvedGuildMember,
 	APIInteractionResponseCallbackData,
 	APIRole,
 	APIUser,
@@ -9,6 +9,8 @@ import type {
 } from 'discord-api-types/v9';
 
 import type { MahojiClient } from '..';
+
+export type { APIApplicationCommandOption, APIChatInputApplicationCommandInteraction } from 'discord-api-types/v9';
 
 export type CommandOption = {
 	name: string;
@@ -37,7 +39,15 @@ export type CommandOption = {
 	  }
 );
 
-type CommandOptions = Record<string, number | string | APIUser | APIGuildMember | APIChannel | APIRole | boolean>;
+export type CommandOptions = Record<
+	string,
+	| number
+	| string
+	| { user: APIUser; member: APIInteractionDataResolvedGuildMember }
+	| APIInteractionDataResolvedChannel
+	| APIRole
+	| boolean
+>;
 
 export interface CommandRunOptions<T extends CommandOptions = {}> {
 	interaction: APIApplicationCommandInteraction;

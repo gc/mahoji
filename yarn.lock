@@ -1459,10 +1459,10 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-discord-api-types@0.24.0-next.7db6953.1633523385:
-  version "0.24.0-next.7db6953.1633523385"
-  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.24.0-next.7db6953.1633523385.tgz#384c2772d43029dd31e85c5e894ae4fd20839c40"
-  integrity sha512-pZZvJoQk69y1j8cbjiG/FQ79L4b6yS04akdw4nDEvjljcvbF5WGdirIy0zIUNVsglAOYPNI01WNMAA/FEvrJzQ==
+discord-api-types@0.25.0-next.a507765.1635037403:
+  version "0.25.0-next.a507765.1635037403"
+  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.25.0-next.a507765.1635037403.tgz#ef0b7ff4be4e16e69fbb9f3b9a8377c222c8a1e9"
+  integrity sha512-lRop84g3XlHgfFg/FHXwty4ck3m4fGAyVLjjRjQ87m0NfvqLtVh8litMcpmx8NZDs/4eEHBUlxCMDII7fR62qA==
 
 doctrine@^2.1.0:
   version "2.1.0"
