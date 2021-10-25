@@ -1,5 +1,11 @@
 import { mergeDefault } from '@sapphire/utilities';
-import { APIInteractionResponse, InteractionResponseType, InteractionType } from 'discord-api-types/v9';
+import {
+	APIApplicationCommandInteractionDataOptionWithValues,
+	APIChatInputApplicationCommandInteraction,
+	APIInteractionResponse,
+	InteractionResponseType,
+	InteractionType
+} from 'discord-api-types/v9';
 import { fastify, FastifyInstance, FastifyServerOptions } from 'fastify';
 import fastifySensible from 'fastify-sensible';
 import fs from 'fs/promises';
@@ -16,6 +22,7 @@ import {
 	updateCommand,
 	webcrypto
 } from '../util';
+import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
 
 interface MahojiOptions {
@@ -65,7 +72,7 @@ export class MahojiClient {
 		this.applicationID = options.applicationID;
 		this.interactionsEndpointURL = options.interactionsEndpointURL ?? defaultMahojiOptions.interactionsEndpointURL;
 		this.httpPort = options.httpPort;
-		this.storeDirs = options.storeDirs ?? [process.cwd()];
+		this.storeDirs = [...(options.storeDirs ?? [process.cwd()]), join('node_modules', 'mahoji', 'dist')];
 		this.commands = new Store<ICommand>({ name: 'commands', dirs: this.storeDirs, checker: isValidCommand });
 
 		this.server = fastify(mergeDefault(defaultMahojiOptions.fastifyOptions ?? {}, options.fastifyOptions));
@@ -86,11 +93,19 @@ export class MahojiClient {
 			}
 
 			if (result.interaction.type === InteractionType.ApplicationCommand) {
-				const command = this.commands.pieces.get(result.interaction.data.name);
+				const interaction = result.interaction as APIChatInputApplicationCommandInteraction;
+				const apiOptions = (interaction.data.options ??
+					[]) as APIApplicationCommandInteractionDataOptionWithValues[];
+				const options: Record<string, APIApplicationCommandInteractionDataOptionWithValues['value']> = {};
+				const slashCommandInteraction = new SlashCommandInteraction(interaction);
+				for (const { name, value } of apiOptions) {
+					options[name] = value;
+				}
+				const command = this.commands.pieces.get(interaction.data.name);
 				if (command) {
 					const response = await command.run({
-						interaction: result.interaction,
-						options: result.interaction.data as any,
+						interaction: slashCommandInteraction,
+						options: slashCommandInteraction.options,
 						client: this
 					});
 					const apiResponse: APIInteractionResponse =
@@ -143,12 +158,12 @@ export class MahojiClient {
 		// If more than 3 commands need to be updated, bulk update ALL of them.
 		// Otherwise, just individually update the changed command(s)
 		if (differences.length > 3) {
-			bulkUpdateCommands(this, commands);
+			bulkUpdateCommands({ client: this, commands, isGlobal: false });
 		} else {
 			for (const changedCachedCommand of differences) {
 				const command = commands.find(c => c.name === changedCachedCommand.name);
 				if (command) {
-					updateCommand(this, command);
+					updateCommand({ client: this, command, isGlobal: false });
 				}
 			}
 		}

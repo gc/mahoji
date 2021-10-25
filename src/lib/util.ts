@@ -1,14 +1,19 @@
 import { isFunction } from '@sapphire/utilities';
 import crypto from 'crypto';
-import type { RESTPostAPIApplicationGuildCommandsJSONBody } from 'discord-api-types';
+import {
+	APIChatInputApplicationCommandInteraction,
+	APIChatInputApplicationCommandInteractionDataResolved,
+	APIInteractionDataResolvedChannel,
+	APIInteractionDataResolvedGuildMember,
+	APIRole,
+	APIUser,
+	ApplicationCommandOptionType,
+	RESTPostAPIApplicationGuildCommandsJSONBody
+} from 'discord-api-types/v9';
 import fetch from 'node-fetch';
 
-import type { CachedCommand, ICommand } from '../lib/types';
+import type { CachedCommand, CommandOptions, ICommand } from '../lib/types';
 import type { MahojiClient } from './structures/Mahoji';
-
-export function sha256Hash(x: string) {
-	return crypto.createHash('sha256').update(x, 'utf8').digest('hex');
-}
 
 export type CryptoKey = any;
 export type WebCrypto = any;
@@ -38,7 +43,7 @@ export function isValidPiece(data: any) {
 
 export function convertCommandToCachedCommand(c: ICommand): CachedCommand {
 	return {
-		options: sha256Hash(JSON.stringify(c.options)),
+		options: JSON.stringify(c.options),
 		name: c.name,
 		description: c.description
 	};
@@ -58,38 +63,65 @@ export function convertCommandToAPICommand(cmd: ICommand): RESTPostAPIApplicatio
 	};
 }
 
-export async function bulkUpdateCommands(client: MahojiClient, commands: ICommand[]) {
+function baseHeaders(client: MahojiClient) {
+	return {
+		Authorization: `Bot ${client.token}`,
+		'Content-Type': 'application/json'
+	};
+}
+
+function getCommandsEndpoint({ client, isGlobal }: { client: MahojiClient; isGlobal: boolean }) {
+	return isGlobal
+		? `${client.discordBaseURL}/applications/${client.applicationID}/${client.developmentServerID}/commands`
+		: `${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`;
+}
+
+/**
+ * Submits ALL commands to the Discord API to be updated/synced, so they're all available to use.
+ */
+export async function bulkUpdateCommands({
+	client,
+	commands,
+	isGlobal
+}: {
+	client: MahojiClient;
+	commands: ICommand[];
+	isGlobal: boolean;
+}) {
 	const apiCommands = commands.map(convertCommandToAPICommand);
 
-	const result = await fetch(
-		`${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`,
-		{
-			method: 'PUT',
-			body: JSON.stringify(apiCommands),
-			headers: {
-				Authorization: `Bot ${client.token}`,
-				'Content-Type': 'application/json'
-			}
+	const result = await fetch(getCommandsEndpoint({ client, isGlobal }), {
+		method: 'PUT',
+		body: JSON.stringify(apiCommands),
+		headers: {
+			...baseHeaders(client)
 		}
-	);
+	});
 
 	return result;
 }
 
-export async function updateCommand(client: MahojiClient, command: ICommand) {
+/**
+ * Submits a command to the Discord API to be updated/synced, so it's available to use.
+ */
+export async function updateCommand({
+	client,
+	command,
+	isGlobal
+}: {
+	client: MahojiClient;
+	command: ICommand;
+	isGlobal: boolean;
+}) {
 	const apiCommand = convertCommandToAPICommand(command);
 
-	const result = await fetch(
-		`${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`,
-		{
-			method: 'POST',
-			body: JSON.stringify(apiCommand),
-			headers: {
-				Authorization: `Bot ${client.token}`,
-				'Content-Type': 'application/json'
-			}
+	const result = await fetch(getCommandsEndpoint({ client, isGlobal }), {
+		method: 'POST',
+		body: JSON.stringify(apiCommand),
+		headers: {
+			...baseHeaders(client)
 		}
-	);
+	});
 
 	return result;
 }
@@ -102,4 +134,39 @@ export const enum Time {
 	Day = 1000 * 60 * 60 * 24,
 	Month = 1000 * 60 * 60 * 24 * 30,
 	Year = 1000 * 60 * 60 * 24 * 365
+}
+
+export function convertAPIOptionsToCommandOptions(
+	options: APIChatInputApplicationCommandInteraction['data']['options'],
+	resolvedObjects: APIChatInputApplicationCommandInteractionDataResolved | undefined
+): CommandOptions {
+	if (!options) return {};
+
+	let parsedOptions: CommandOptions = {};
+
+	for (const opt of options) {
+		if (
+			opt.type === ApplicationCommandOptionType.SubcommandGroup ||
+			opt.type === ApplicationCommandOptionType.Subcommand
+		) {
+			for (const [key, value] of Object.entries(
+				convertAPIOptionsToCommandOptions(opt.options, resolvedObjects)
+			)) {
+				parsedOptions[key] = value;
+			}
+		} else if (opt.type === ApplicationCommandOptionType.Channel) {
+			parsedOptions[opt.name] = resolvedObjects?.channels?.[opt.value] as APIInteractionDataResolvedChannel;
+		} else if (opt.type === ApplicationCommandOptionType.Role) {
+			parsedOptions[opt.name] = resolvedObjects?.roles?.[opt.value] as APIRole;
+		} else if (opt.type === ApplicationCommandOptionType.User) {
+			parsedOptions[opt.name] = {
+				user: resolvedObjects?.users?.[opt.value] as APIUser,
+				member: resolvedObjects?.members?.[opt.value] as APIInteractionDataResolvedGuildMember
+			};
+		} else {
+			parsedOptions[opt.name] = opt.value;
+		}
+	}
+
+	return parsedOptions;
 }

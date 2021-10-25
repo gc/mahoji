@@ -24,7 +24,7 @@
     "@types/jest": "^26.0.23",
     "@types/node": "^16.9.0",
     "@types/node-fetch": "^2.5.3",
-    "discord-api-types": "0.24.0-next.7db6953.1633523385",
+    "discord-api-types": "0.25.0-next.a507765.1635037403",
     "eslint": "^7.32.0",
     "jest": "^27.0.1",
     "nodemon": "^2.0.12",
