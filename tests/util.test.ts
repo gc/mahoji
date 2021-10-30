@@ -1,10 +1,4 @@
-import {
-	cachedCommandsAreEqual,
-	convertAPIOptionsToCommandOptions,
-	convertCommandToAPICommand,
-	convertCommandToCachedCommand,
-	isValidCommand
-} from '../src/lib/util';
+import { convertAPIOptionsToCommandOptions, convertCommandToAPICommand, isValidCommand } from '../src/lib/util';
 import { commandInteractionModActions } from './data/command_interaction';
 import { mockCommand } from './testUtil';
 
@@ -17,21 +11,6 @@ describe('utils', () => {
 			options: []
 		});
 	});
-	test('cachedCommandsAreEqual', async () => {
-		const command = mockCommand;
-		const cachedCommand = convertCommandToCachedCommand(command);
-
-		expect(cachedCommandsAreEqual(cachedCommand, cachedCommand)).toBe(true);
-	});
-	test('convertCommandToCachedCommand', async () => {
-		const command = mockCommand;
-		expect(convertCommandToCachedCommand(command)).toStrictEqual({
-			options: JSON.stringify(command.options),
-			name: 'test',
-			description: 'This is a fake, testing command!'
-		});
-	});
-
 	test('isValidCommand', () => {
 		const validCommand = mockCommand;
 		expect(isValidCommand(validCommand)).toEqual(true);

@@ -65,9 +65,3 @@ export type ICommand = Readonly<{
 export interface Piece {
 	name: string;
 }
-
-export interface CachedCommand {
-	name: string;
-	description: string;
-	options: string;
-}

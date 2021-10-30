@@ -39,4 +39,8 @@ export class Store<T extends Piece> {
 
 		return this;
 	}
+
+	get values() {
+		return Array.from(this.pieces.values());
+	}
 }

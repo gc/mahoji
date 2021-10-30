@@ -8,11 +8,12 @@ import {
 	APIRole,
 	APIUser,
 	ApplicationCommandOptionType,
-	RESTPostAPIApplicationGuildCommandsJSONBody
+	RESTPostAPIApplicationGuildCommandsJSONBody,
+	Routes,
+	Snowflake
 } from 'discord-api-types/v9';
-import fetch from 'node-fetch';
 
-import type { CachedCommand, CommandOptions, ICommand } from '../lib/types';
+import type { CommandOptions, ICommand } from '../lib/types';
 import type { MahojiClient } from './structures/Mahoji';
 
 export type CryptoKey = any;
@@ -41,20 +42,6 @@ export function isValidPiece(data: any) {
 	return true;
 }
 
-export function convertCommandToCachedCommand(c: ICommand): CachedCommand {
-	return {
-		options: JSON.stringify(c.options),
-		name: c.name,
-		description: c.description
-	};
-}
-
-export function cachedCommandsAreEqual(previousC: CachedCommand, newC: CachedCommand) {
-	return (
-		newC.name === previousC.name && newC.description === previousC.description && newC.options === previousC.options
-	);
-}
-
 export function convertCommandToAPICommand(cmd: ICommand): RESTPostAPIApplicationGuildCommandsJSONBody {
 	return {
 		name: cmd.name,
@@ -63,42 +50,28 @@ export function convertCommandToAPICommand(cmd: ICommand): RESTPostAPIApplicatio
 	};
 }
 
-function baseHeaders(client: MahojiClient) {
-	return {
-		Authorization: `Bot ${client.token}`,
-		'Content-Type': 'application/json'
-	};
-}
-
-function getCommandsEndpoint({ client, isGlobal }: { client: MahojiClient; isGlobal: boolean }) {
-	return isGlobal
-		? `${client.discordBaseURL}/applications/${client.applicationID}/${client.developmentServerID}/commands`
-		: `${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`;
-}
-
 /**
  * Submits ALL commands to the Discord API to be updated/synced, so they're all available to use.
  */
 export async function bulkUpdateCommands({
 	client,
 	commands,
-	isGlobal
+	guildID
 }: {
 	client: MahojiClient;
 	commands: ICommand[];
-	isGlobal: boolean;
+	guildID: Snowflake | null;
 }) {
 	const apiCommands = commands.map(convertCommandToAPICommand);
 
-	const result = await fetch(getCommandsEndpoint({ client, isGlobal }), {
-		method: 'PUT',
-		body: JSON.stringify(apiCommands),
-		headers: {
-			...baseHeaders(client)
-		}
-	});
+	const route =
+		guildID === null
+			? Routes.applicationCommands(client.applicationID)
+			: Routes.applicationGuildCommands(client.applicationID, guildID);
 
-	return result;
+	return client.restManager.put(route, {
+		body: apiCommands
+	});
 }
 
 /**
@@ -107,23 +80,21 @@ export async function bulkUpdateCommands({
 export async function updateCommand({
 	client,
 	command,
-	isGlobal
+	guildID
 }: {
 	client: MahojiClient;
 	command: ICommand;
-	isGlobal: boolean;
+	guildID: Snowflake | null;
 }) {
 	const apiCommand = convertCommandToAPICommand(command);
 
-	const result = await fetch(getCommandsEndpoint({ client, isGlobal }), {
-		method: 'POST',
-		body: JSON.stringify(apiCommand),
-		headers: {
-			...baseHeaders(client)
-		}
+	const route =
+		guildID === null
+			? Routes.applicationCommands(client.applicationID)
+			: Routes.applicationGuildCommands(client.applicationID, guildID);
+	return client.restManager.post(route, {
+		body: apiCommand
 	});
-
-	return result;
 }
 
 export const enum Time {

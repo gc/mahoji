@@ -188,6 +188,40 @@ describe('server handles requests', () => {
 		await close();
 	});
 
+	test('handles commands #3', async () => {
+		const { client, makeHeaders, close } = await mockClient();
+
+		const commandInteraction: APIChatInputApplicationCommandInteraction = {
+			...commandInteractionBase,
+			data: {
+				id: mockSnowflake,
+				name: 'mahoji',
+				type: 1,
+				options: [
+					{
+						name: 'command',
+						type: 3,
+						value: 'ping'
+					}
+				]
+			}
+		};
+		const payload = JSON.stringify(commandInteraction);
+
+		const response = await client.server.inject({
+			...baseRequest,
+			payload,
+			headers: await makeHeaders(payload)
+		});
+		expect(response.json()).toStrictEqual({
+			data: {
+				content: 'Magnaboy, Pong!'
+			},
+			type: 4
+		});
+		await close();
+	});
+
 	test('handles unfound commands', async () => {
 		const { client, makeHeaders, close } = await mockClient();
 

@@ -1,8 +1,15 @@
+// import Mitm from 'mitm';
 import { join } from 'path';
 
 import { APIInteractionGuildMember, MahojiClient } from '../src';
 import type { ICommand } from '../src/lib/types';
 import { CryptoKey, webcrypto } from '../src/lib/util';
+
+// const mitm = Mitm();
+
+// mitm.on('request', () => {
+// 	throw new Error('Network requests forbidden in offline mode');
+// });
 
 type CryptoKeySignature = ArrayBuffer;
 

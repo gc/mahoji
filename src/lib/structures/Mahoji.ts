@@ -1,27 +1,21 @@
+import { REST } from '@discordjs/rest';
 import { mergeDefault } from '@sapphire/utilities';
 import {
+	APIApplicationCommand,
 	APIApplicationCommandInteractionDataOptionWithValues,
 	APIChatInputApplicationCommandInteraction,
 	APIInteractionResponse,
 	InteractionResponseType,
-	InteractionType
+	InteractionType,
+	Routes
 } from 'discord-api-types/v9';
 import { fastify, FastifyInstance, FastifyServerOptions } from 'fastify';
 import fastifySensible from 'fastify-sensible';
-import fs from 'fs/promises';
 import { join } from 'path';
 
 import { verifyDiscordCrypto } from '../handler';
-import type { CachedCommand, ICommand } from '../types';
-import {
-	bulkUpdateCommands,
-	cachedCommandsAreEqual,
-	convertCommandToCachedCommand,
-	CryptoKey,
-	isValidCommand,
-	updateCommand,
-	webcrypto
-} from '../util';
+import type { ICommand } from '../types';
+import { bulkUpdateCommands, CryptoKey, isValidCommand, updateCommand, webcrypto } from '../util';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
 
@@ -57,6 +51,7 @@ export class MahojiClient {
 	interactionsEndpointURL: string;
 	httpPort: number;
 	storeDirs: string[];
+	restManager: REST;
 
 	constructor(options: MahojiOptions) {
 		this.cryptoKey = webcrypto.subtle.importKey(
@@ -74,6 +69,7 @@ export class MahojiClient {
 		this.httpPort = options.httpPort;
 		this.storeDirs = [...(options.storeDirs ?? [process.cwd()]), join('node_modules', 'mahoji', 'dist')];
 		this.commands = new Store<ICommand>({ name: 'commands', dirs: this.storeDirs, checker: isValidCommand });
+		this.restManager = new REST({ version: '9' }).setToken(this.token);
 
 		this.server = fastify(mergeDefault(defaultMahojiOptions.fastifyOptions ?? {}, options.fastifyOptions));
 
@@ -133,39 +129,30 @@ export class MahojiClient {
 
 	async updateCommands() {
 		console.log(`${this.commands.pieces.size} commands`);
+		const liveCommands = (await this.restManager.get(
+			Routes.applicationGuildCommands(this.applicationID, this.developmentServerID)
+		)) as APIApplicationCommand[];
 
-		const cacheFilePath = join(this.storeDirs[0], '.mahoji');
-
-		const hashStore = await fs.readFile(cacheFilePath).catch(() => null);
-		const oldCachedCommands = hashStore !== null ? (JSON.parse(hashStore.toString()) as CachedCommand[]) : null;
-
-		const commands = Array.from(this.commands.pieces.values());
-		const currentCachedCommands = commands.map(convertCommandToCachedCommand).sort();
+		const changedCommands: ICommand[] = [];
 
 		// Find commands that don't match their previous values
-		let differences: CachedCommand[] = [];
-		for (const currentCachedCommand of currentCachedCommands) {
-			const oldHash = oldCachedCommands?.find(t => t.name === currentCachedCommand.name);
-			if (oldHash && !cachedCommandsAreEqual(oldHash, currentCachedCommand)) {
-				console.log(`${oldHash?.name} ${currentCachedCommand.name} changed`);
-				differences.push(currentCachedCommand);
+		for (const cmd of this.commands.values) {
+			const liveCmd = liveCommands.find(c => c.name === cmd.name);
+			if (
+				!liveCmd ||
+				cmd.description !== liveCmd.description ||
+				JSON.stringify(liveCmd.options) !== JSON.stringify(cmd.options)
+			) {
+				changedCommands.push(cmd);
 			}
 		}
 
-		// Cache the current commands to a file
-		await fs.writeFile(cacheFilePath, Buffer.from(JSON.stringify(currentCachedCommands, null, 4)));
-
 		// If more than 3 commands need to be updated, bulk update ALL of them.
 		// Otherwise, just individually update the changed command(s)
-		if (differences.length > 3) {
-			bulkUpdateCommands({ client: this, commands, isGlobal: false });
+		if (changedCommands.length > 3) {
+			bulkUpdateCommands({ client: this, commands: changedCommands, guildID: this.developmentServerID });
 		} else {
-			for (const changedCachedCommand of differences) {
-				const command = commands.find(c => c.name === changedCachedCommand.name);
-				if (command) {
-					updateCommand({ client: this, command, isGlobal: false });
-				}
-			}
+			changedCommands.map(command => updateCommand({ client: this, command, guildID: this.developmentServerID }));
 		}
 	}
 }

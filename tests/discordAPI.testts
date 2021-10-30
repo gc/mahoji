@@ -1,20 +1,36 @@
-import fetch from 'node-fetch';
+import { Response } from 'node-fetch';
+import { URLSearchParams } from 'url';
 
 import { bulkUpdateCommands, updateCommand } from '../src/lib/util';
 import { mockClient, mockCommand } from './testUtil';
 
-jest.mock('node-fetch', () => jest.fn());
-const fetchFn = fetch as jest.MockedFunction<typeof fetch>;
+function mockFakeResponse() {
+	const t = new Response(new URLSearchParams({}), {
+		headers: {
+			'X-RateLimit-Limit': '10',
+			'X-RateLimit-Remaining': '10',
+			'X-RateLimit-Reset-After': '10',
+			'X-RateLimit-Bucket': '10',
+			'Retry-After': '10'
+		},
+		status: 200
+	});
+	console.log(11_111_111_111_111_111);
+	console.log({ aaaaaaa: t.ok });
+	return t;
+}
 
 describe('discord api call tests', () => {
-	afterEach(() => fetchFn.mockReset());
+	const mockFn = jest.fn(mockFakeResponse);
+	jest.mock('node-fetch', () => mockFn);
+	const mockFetchFn = require('node-fetch') as jest.MockedFunction<typeof fetch>;
+
 	test('bulk update commands', async () => {
 		const { client, close } = await mockClient();
 		try {
 			const commands = Array.from(client.commands.pieces.values());
-			await bulkUpdateCommands({ client, commands, isGlobal: false });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
+			await bulkUpdateCommands({ client, commands, guildID: client.developmentServerID });
+			expect(mockFetchFn).toHaveBeenCalledWith(
 				`${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`,
 				{
 					method: 'PUT',
@@ -25,7 +41,7 @@ describe('discord api call tests', () => {
 					}
 				}
 			);
-			expect(fetchFn).toHaveReturned();
+			expect(mockFetchFn).toHaveReturned();
 		} finally {
 			close();
 		}
@@ -34,9 +50,8 @@ describe('discord api call tests', () => {
 		const { client, close } = await mockClient();
 		try {
 			const commands = Array.from(client.commands.pieces.values());
-			await bulkUpdateCommands({ client, commands, isGlobal: true });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
+			await bulkUpdateCommands({ client, commands, guildID: client.developmentServerID });
+			expect(mockFetchFn).toHaveBeenCalledWith(
 				`${client.discordBaseURL}/applications/${client.applicationID}/${client.developmentServerID}/commands`,
 				{
 					method: 'PUT',
@@ -47,7 +62,7 @@ describe('discord api call tests', () => {
 					}
 				}
 			);
-			expect(fetchFn).toHaveReturned();
+			expect(mockFetchFn).toHaveReturned();
 		} finally {
 			close();
 		}
@@ -56,9 +71,8 @@ describe('discord api call tests', () => {
 	test('single command update', async () => {
 		const { client, close } = await mockClient();
 		try {
-			await updateCommand({ client, command: mockCommand, isGlobal: false });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
+			await updateCommand({ client, command: mockCommand, guildID: null });
+			expect(mockFetchFn).toHaveBeenCalledWith(
 				`${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`,
 				{
 					method: 'POST',
@@ -69,7 +83,7 @@ describe('discord api call tests', () => {
 					}
 				}
 			);
-			expect(fetchFn).toHaveReturned();
+			expect(mockFetchFn).toHaveReturned();
 		} finally {
 			close();
 		}
@@ -77,9 +91,8 @@ describe('discord api call tests', () => {
 	test('single command update globally', async () => {
 		const { client, close } = await mockClient();
 		try {
-			await updateCommand({ client, command: mockCommand, isGlobal: true });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
+			await updateCommand({ client, command: mockCommand, guildID: null });
+			expect(mockFetchFn).toHaveBeenCalledWith(
 				`${client.discordBaseURL}/applications/${client.applicationID}/${client.developmentServerID}/commands`,
 				{
 					method: 'POST',
@@ -90,7 +103,7 @@ describe('discord api call tests', () => {
 					}
 				}
 			);
-			expect(fetchFn).toHaveReturned();
+			expect(mockFetchFn).toHaveReturned();
 		} finally {
 			close();
 		}
