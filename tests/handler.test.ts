@@ -20,6 +20,31 @@ const commandInteractionBase = {
 } as const;
 
 describe('server handles requests', () => {
+	test('handle missing/bad-type request', async () => {
+		const { client, makeHeaders, close } = await mockClient();
+
+		const pingInteraction: APIPingInteraction = {
+			id: '---',
+			application_id: '--',
+			type: 50,
+			version: 1,
+			token: '---'
+		};
+		const payload = JSON.stringify(pingInteraction);
+
+		const response = await client.server.inject({
+			...baseRequest,
+			payload,
+			headers: await makeHeaders(payload)
+		});
+		expect(response.json()).toStrictEqual({
+			error: 'Not Found',
+			message: 'Not Found',
+			statusCode: 404
+		});
+
+		await close();
+	});
 	test('handle good request', async () => {
 		const { client, makeHeaders, close } = await mockClient();
 
@@ -252,9 +277,15 @@ describe('server handles requests', () => {
 			...commandInteractionBase,
 			data: {
 				id: mockSnowflake,
-				name: mockCommand.name,
+				name: 'mahoji',
 				type: 1,
-				options: []
+				options: [
+					{
+						name: 'command',
+						type: 1,
+						value: 'ping'
+					}
+				]
 			}
 		};
 		const payload = JSON.stringify(commandInteraction);
@@ -264,7 +295,64 @@ describe('server handles requests', () => {
 			payload,
 			headers: await makeHeaders(payload)
 		});
-		expect(response.json()).toStrictEqual({ error: 'Not Found', message: 'Not Found', statusCode: 404 });
+		expect(response.json()).toStrictEqual({
+			data: {
+				content: 'Magnaboy, Pong!'
+			},
+			type: 4
+		});
+
+		// no options
+		const commandInteraction2: APIChatInputApplicationCommandInteraction = {
+			...commandInteractionBase,
+			data: {
+				id: mockSnowflake,
+				name: 'mahoji',
+				type: 1,
+				options: undefined
+			}
+		};
+		const payload2 = JSON.stringify(commandInteraction2);
+
+		const response2 = await client.server.inject({
+			...baseRequest,
+			payload: payload2,
+			headers: await makeHeaders(payload2)
+		});
+		expect(response2.json()).toStrictEqual({
+			data: {
+				content: 'Magnaboy, Pong!'
+			},
+			type: 4
+		});
+		// no value
+		const commandInteraction3: APIChatInputApplicationCommandInteraction = {
+			...commandInteractionBase,
+			data: {
+				id: mockSnowflake,
+				name: 'mahoji',
+				type: 1,
+				options: [
+					{
+						name: 'command',
+						type: 1
+					} as any
+				]
+			}
+		};
+		const payload3 = JSON.stringify(commandInteraction3);
+
+		const response3 = await client.server.inject({
+			...baseRequest,
+			payload: payload3,
+			headers: await makeHeaders(payload3)
+		});
+		expect(response3.json()).toStrictEqual({
+			data: {
+				content: 'Magnaboy, Pong!'
+			},
+			type: 4
+		});
 		await close();
 	});
 });

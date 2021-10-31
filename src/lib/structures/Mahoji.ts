@@ -26,7 +26,7 @@ interface MahojiOptions {
 	developmentServerID: string;
 	discordBaseURL?: string;
 	applicationID: string;
-	interactionsEndpointURL?: string;
+	interactionsEndpointURL: string;
 	httpPort: number;
 	storeDirs?: string[];
 }
@@ -36,8 +36,7 @@ export const defaultMahojiOptions = {
 	discordPublicKey: '',
 	discordToken: '',
 	developmentServer: '',
-	discordBaseURL: 'https://discord.com/api/v9',
-	interactionsEndpointURL: '/'
+	discordBaseURL: 'https://discord.com/api/v9'
 } as const;
 
 export class MahojiClient {
@@ -65,13 +64,13 @@ export class MahojiClient {
 		this.discordBaseURL = options.discordBaseURL ?? defaultMahojiOptions.discordBaseURL;
 		this.developmentServerID = options.developmentServerID;
 		this.applicationID = options.applicationID;
-		this.interactionsEndpointURL = options.interactionsEndpointURL ?? defaultMahojiOptions.interactionsEndpointURL;
+		this.interactionsEndpointURL = options.interactionsEndpointURL;
 		this.httpPort = options.httpPort;
 		this.storeDirs = [...(options.storeDirs ?? [process.cwd()]), join('node_modules', 'mahoji', 'dist')];
 		this.commands = new Store<ICommand>({ name: 'commands', dirs: this.storeDirs, checker: isValidCommand });
 		this.restManager = new REST({ version: '9' }).setToken(this.token);
 
-		this.server = fastify(mergeDefault(defaultMahojiOptions.fastifyOptions ?? {}, options.fastifyOptions));
+		this.server = fastify(mergeDefault(defaultMahojiOptions.fastifyOptions, options.fastifyOptions));
 
 		this.server.register(fastifySensible, { errorHandler: false });
 		this.server.post(this.interactionsEndpointURL, async (req, res) => {
@@ -90,13 +89,19 @@ export class MahojiClient {
 
 			if (result.interaction.type === InteractionType.ApplicationCommand) {
 				const interaction = result.interaction as APIChatInputApplicationCommandInteraction;
-				const apiOptions = (interaction.data.options ??
-					[]) as APIApplicationCommandInteractionDataOptionWithValues[];
 				const options: Record<string, APIApplicationCommandInteractionDataOptionWithValues['value']> = {};
 				const slashCommandInteraction = new SlashCommandInteraction(interaction);
-				for (const { name, value } of apiOptions) {
-					options[name] = value;
+
+				console.log(interaction.data.options);
+
+				if (interaction.data.options) {
+					for (const option of interaction.data.options) {
+						if ('value' in option) {
+							options[option.name] = option.value;
+						}
+					}
 				}
+
 				const command = this.commands.pieces.get(interaction.data.name);
 				if (command) {
 					const response = await command.run({
@@ -124,11 +129,10 @@ export class MahojiClient {
 
 	async loadStores() {
 		await Promise.all([this.commands].map(store => store.load()));
-		if (process.env.NODE_ENV !== 'test') await this.updateCommands();
+		await this.updateCommands();
 	}
 
 	async updateCommands() {
-		console.log(`${this.commands.pieces.size} commands`);
 		const liveCommands = (await this.restManager.get(
 			Routes.applicationGuildCommands(this.applicationID, this.developmentServerID)
 		)) as APIApplicationCommand[];
@@ -138,6 +142,7 @@ export class MahojiClient {
 		// Find commands that don't match their previous values
 		for (const cmd of this.commands.values) {
 			const liveCmd = liveCommands.find(c => c.name === cmd.name);
+			console.log(Boolean(liveCmd));
 			if (
 				!liveCmd ||
 				cmd.description !== liveCmd.description ||

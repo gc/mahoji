@@ -1,15 +1,17 @@
-// import Mitm from 'mitm';
+import type { RequestData, RouteLike } from '@discordjs/rest';
+import type { FastifyServerOptions } from 'fastify';
+import Mitm from 'mitm';
 import { join } from 'path';
 
 import { APIInteractionGuildMember, MahojiClient } from '../src';
 import type { ICommand } from '../src/lib/types';
-import { CryptoKey, webcrypto } from '../src/lib/util';
+import { convertCommandToAPICommand, CryptoKey, webcrypto } from '../src/lib/util';
 
-// const mitm = Mitm();
+const mitm = Mitm();
 
-// mitm.on('request', () => {
-// 	throw new Error('Network requests forbidden in offline mode');
-// });
+mitm.on('request', () => {
+	throw new Error('Network requests forbidden in offline mode');
+});
 
 type CryptoKeySignature = ArrayBuffer;
 
@@ -44,9 +46,18 @@ export function isCryptoVerified(publicKey: CryptoKey, signature: CryptoKeySigna
 	return webcrypto.subtle.verify('NODE-ED25519', publicKey, signature, data);
 }
 
-function btoa(any: any) {
-	return Buffer.from(any).toString('hex');
+function btoa(str: string) {
+	return Buffer.from(str).toString('hex');
 }
+
+export const mockCommand: ICommand = {
+	name: 'test',
+	description: 'This is a fake, testing command!',
+	options: [],
+	run: async ({ interaction }) => {
+		return `Test successfull, ${interaction.member?.user.username}!`;
+	}
+};
 
 export async function hexKey(key: CryptoKey) {
 	let rawKey = await webcrypto.subtle.exportKey('raw', key);
@@ -60,7 +71,11 @@ export interface MockedClient {
 	close: () => void;
 }
 
-export async function mockClient(): Promise<MockedClient> {
+export async function mockClient(options?: {
+	clientCommands?: ICommand[];
+	storeDirs?: null | string[];
+	fastifyOptions?: FastifyServerOptions;
+}): Promise<MockedClient> {
 	const keyPair = await generateKeyPair();
 	const publicKey = await hexKey(keyPair.publicKey);
 	const client = new MahojiClient({
@@ -68,11 +83,27 @@ export async function mockClient(): Promise<MockedClient> {
 		discordToken: 'FAKE_TOKEN',
 		developmentServerID: '228822415189344257',
 		applicationID: '661440240656842762',
-		fastifyOptions: {},
+		fastifyOptions: options?.fastifyOptions,
 		interactionsEndpointURL: '/interactions',
 		httpPort: 8322,
-		storeDirs: [join('compiledtests', 'tests'), join('compiledtests', 'src')]
+		storeDirs:
+			options?.storeDirs === null ? undefined : [join('compiledtests', 'tests'), join('compiledtests', 'src')]
 	});
+
+	if (options?.clientCommands) {
+		for (const i of options.clientCommands) {
+			client.commands.pieces.set(i.name, i);
+		}
+	}
+
+	const fn1 = jest.fn();
+	client.restManager.put = fn1;
+	const fn2 = jest.fn();
+	client.restManager.post = fn2;
+	const fn3 = jest.fn(async (_fullRoute: RouteLike, _options?: RequestData) => {
+		return [convertCommandToAPICommand(mockCommand)];
+	});
+	client.restManager.get = fn3;
 
 	await client.start();
 
@@ -97,15 +128,6 @@ export async function mockClient(): Promise<MockedClient> {
 
 	return mockedClient;
 }
-
-export const mockCommand: ICommand = {
-	name: 'test',
-	description: 'This is a fake, testing command!',
-	options: [],
-	run: async ({ interaction }) => {
-		return `Test successfull, ${interaction.member?.user.username}!`;
-	}
-};
 
 export const mockSnowflake = '157797566833098752';
 

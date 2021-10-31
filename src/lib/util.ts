@@ -50,9 +50,6 @@ export function convertCommandToAPICommand(cmd: ICommand): RESTPostAPIApplicatio
 	};
 }
 
-/**
- * Submits ALL commands to the Discord API to be updated/synced, so they're all available to use.
- */
 export async function bulkUpdateCommands({
 	client,
 	commands,
@@ -74,9 +71,6 @@ export async function bulkUpdateCommands({
 	});
 }
 
-/**
- * Submits a command to the Discord API to be updated/synced, so it's available to use.
- */
 export async function updateCommand({
 	client,
 	command,

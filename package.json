@@ -29,7 +29,6 @@
     "discord-api-types": "0.25.0-next.a507765.1635037403",
     "eslint": "^7.32.0",
     "jest": "^27.0.1",
-    "jest-fetch-mock": "^3.0.3",
     "mitm": "^1.7.2",
     "nodemon": "^2.0.12",
     "rimraf": "^3.0.2",

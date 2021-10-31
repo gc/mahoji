@@ -19,8 +19,10 @@ export const command: ICommand = {
 		}
 	],
 	run: async ({ interaction, options }: CommandRunOptions<{ name?: string; quantity?: number }>) => {
-		return `${options.name ? options.name : interaction.member!.user.username}, Pong!`.repeat(
-			options.quantity ?? 1
-		);
+		return {
+			content: `${options.name ? options.name : interaction.member!.user.username}, Pong!`.repeat(
+				options.quantity ?? 1
+			)
+		};
 	}
 };
