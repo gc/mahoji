@@ -92,8 +92,6 @@ export class MahojiClient {
 				const options: Record<string, APIApplicationCommandInteractionDataOptionWithValues['value']> = {};
 				const slashCommandInteraction = new SlashCommandInteraction(interaction);
 
-				console.log(interaction.data.options);
-
 				if (interaction.data.options) {
 					for (const option of interaction.data.options) {
 						if ('value' in option) {
@@ -142,7 +140,6 @@ export class MahojiClient {
 		// Find commands that don't match their previous values
 		for (const cmd of this.commands.values) {
 			const liveCmd = liveCommands.find(c => c.name === cmd.name);
-			console.log(Boolean(liveCmd));
 			if (
 				!liveCmd ||
 				cmd.description !== liveCmd.description ||
