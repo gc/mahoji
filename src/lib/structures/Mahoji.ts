@@ -24,7 +24,6 @@ interface MahojiOptions {
 	discordPublicKey: string;
 	discordToken: string;
 	developmentServerID: string;
-	discordBaseURL?: string;
 	applicationID: string;
 	interactionsEndpointURL: string;
 	httpPort: number;
@@ -35,8 +34,7 @@ export const defaultMahojiOptions = {
 	fastifyOptions: {},
 	discordPublicKey: '',
 	discordToken: '',
-	developmentServer: '',
-	discordBaseURL: 'https://discord.com/api/v9'
+	developmentServer: ''
 } as const;
 
 export class MahojiClient {
@@ -45,7 +43,6 @@ export class MahojiClient {
 	commands: Store<ICommand>;
 	token: string;
 	developmentServerID: string;
-	discordBaseURL: string;
 	applicationID: string;
 	interactionsEndpointURL: string;
 	httpPort: number;
@@ -61,7 +58,6 @@ export class MahojiClient {
 			['verify']
 		);
 		this.token = options.discordToken;
-		this.discordBaseURL = options.discordBaseURL ?? defaultMahojiOptions.discordBaseURL;
 		this.developmentServerID = options.developmentServerID;
 		this.applicationID = options.applicationID;
 		this.interactionsEndpointURL = options.interactionsEndpointURL;
