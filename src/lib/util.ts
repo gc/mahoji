@@ -13,7 +13,8 @@ import {
 	Snowflake
 } from 'discord-api-types/v9';
 
-import type { CommandOptions, ICommand } from '../lib/types';
+import type { CommandOptions } from '../lib/types';
+import type { ICommand } from './structures/ICommand';
 import type { MahojiClient } from './structures/Mahoji';
 
 export type CryptoKey = any;

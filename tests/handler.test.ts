@@ -21,7 +21,7 @@ const commandInteractionBase = {
 
 describe('server handles requests', () => {
 	test('handle missing/bad-type request', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { fastifyAdapter, makeHeaders, close } = await mockClient();
 
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
@@ -32,7 +32,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(pingInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(payload)
@@ -46,7 +46,7 @@ describe('server handles requests', () => {
 		await close();
 	});
 	test('handle good request', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { fastifyAdapter, makeHeaders, close } = await mockClient();
 
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
@@ -57,7 +57,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(pingInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(payload)
@@ -68,7 +68,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handle crypto-insecure request', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { fastifyAdapter, makeHeaders, close } = await mockClient();
 
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
@@ -79,7 +79,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(pingInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: {
@@ -96,7 +96,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handle invalid request', async () => {
-		const { client, close } = await mockClient();
+		const { fastifyAdapter, close } = await mockClient();
 
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
@@ -107,7 +107,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(pingInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: { 'content-type': 'application/json' }
@@ -121,7 +121,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handle invalid encryption', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { fastifyAdapter, makeHeaders, close } = await mockClient();
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
 			application_id: '--',
@@ -131,7 +131,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(pingInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(JSON.stringify({ type: '5' }))
@@ -145,7 +145,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles commands', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { client, makeHeaders, close, fastifyAdapter } = await mockClient();
 
 		client.commands.pieces.set(mockCommand.name, mockCommand);
 
@@ -160,7 +160,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(commandInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(payload)
@@ -175,7 +175,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles commands #2', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { fastifyAdapter, makeHeaders, close } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -199,7 +199,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(commandInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(payload)
@@ -214,7 +214,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles commands #3', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { makeHeaders, close, fastifyAdapter } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -233,7 +233,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(commandInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(payload)
@@ -248,7 +248,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles unfound commands', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { makeHeaders, close, fastifyAdapter } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -261,7 +261,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(commandInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(payload)
@@ -271,7 +271,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles commands with subcommands', async () => {
-		const { client, makeHeaders, close } = await mockClient();
+		const { makeHeaders, close, fastifyAdapter } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -290,7 +290,7 @@ describe('server handles requests', () => {
 		};
 		const payload = JSON.stringify(commandInteraction);
 
-		const response = await client.server.inject({
+		const response = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload,
 			headers: await makeHeaders(payload)
@@ -314,7 +314,7 @@ describe('server handles requests', () => {
 		};
 		const payload2 = JSON.stringify(commandInteraction2);
 
-		const response2 = await client.server.inject({
+		const response2 = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload: payload2,
 			headers: await makeHeaders(payload2)
@@ -342,7 +342,7 @@ describe('server handles requests', () => {
 		};
 		const payload3 = JSON.stringify(commandInteraction3);
 
-		const response3 = await client.server.inject({
+		const response3 = await fastifyAdapter.server.inject({
 			...baseRequest,
 			payload: payload3,
 			headers: await makeHeaders(payload3)

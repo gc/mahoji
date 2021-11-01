@@ -4,7 +4,8 @@ import Mitm from 'mitm';
 import { join } from 'path';
 
 import { APIInteractionGuildMember, MahojiClient } from '../src';
-import type { ICommand } from '../src/lib/types';
+import { FastifyAdapter } from '../src/lib/adapters/fastify';
+import type { ICommand } from '../src/lib/structures/ICommand';
 import { convertCommandToAPICommand, CryptoKey, webcrypto } from '../src/lib/util';
 
 const mitm = Mitm();
@@ -69,6 +70,7 @@ export interface MockedClient {
 	client: MahojiClient;
 	makeHeaders: (data: string) => Promise<Record<string, string>>;
 	close: () => void;
+	fastifyAdapter: FastifyAdapter;
 }
 
 export async function mockClient(options?: {
@@ -79,15 +81,19 @@ export async function mockClient(options?: {
 	const keyPair = await generateKeyPair();
 	const publicKey = await hexKey(keyPair.publicKey);
 	const client = new MahojiClient({
-		discordPublicKey: publicKey,
 		discordToken: 'FAKE_TOKEN',
 		developmentServerID: '228822415189344257',
 		applicationID: '661440240656842762',
-		fastifyOptions: options?.fastifyOptions,
-		interactionsEndpointURL: '/interactions',
-		httpPort: 8322,
 		storeDirs:
 			options?.storeDirs === null ? undefined : [join('compiledtests', 'tests'), join('compiledtests', 'src')]
+	});
+
+	const fastifyAdapter = new FastifyAdapter({
+		fastifyOptions: options?.fastifyOptions ?? {},
+		interactionsEndpointURL: '/interactions',
+		httpPort: 8322,
+		client,
+		discordPublicKey: publicKey
 	});
 
 	if (options?.clientCommands) {
@@ -120,11 +126,11 @@ export async function mockClient(options?: {
 	}
 
 	async function close() {
-		client.server.server.unref();
-		return client.server.server.close();
+		fastifyAdapter.server.server.unref();
+		return fastifyAdapter.server.server.close();
 	}
 
-	const mockedClient: MockedClient = { keyPair, client, makeHeaders, close };
+	const mockedClient: MockedClient = { keyPair, client, makeHeaders, close, fastifyAdapter };
 
 	return mockedClient;
 }

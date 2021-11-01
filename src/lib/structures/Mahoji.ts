@@ -1,124 +1,87 @@
 import { REST } from '@discordjs/rest';
-import { mergeDefault } from '@sapphire/utilities';
 import {
 	APIApplicationCommand,
-	APIApplicationCommandInteractionDataOptionWithValues,
 	APIChatInputApplicationCommandInteraction,
+	APIInteraction,
 	APIInteractionResponse,
 	InteractionResponseType,
 	InteractionType,
 	Routes
 } from 'discord-api-types/v9';
-import { fastify, FastifyInstance, FastifyServerOptions } from 'fastify';
-import fastifySensible from 'fastify-sensible';
+import { EventEmitter } from 'events';
 import { join } from 'path';
 
-import { verifyDiscordCrypto } from '../handler';
-import type { ICommand } from '../types';
-import { bulkUpdateCommands, CryptoKey, isValidCommand, updateCommand, webcrypto } from '../util';
+import type { Adapter } from '../types';
+import { bulkUpdateCommands, isValidCommand, updateCommand } from '../util';
+import type { ICommand } from './ICommand';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
 
 interface MahojiOptions {
-	fastifyOptions?: FastifyServerOptions;
-	discordPublicKey: string;
 	discordToken: string;
 	developmentServerID: string;
 	applicationID: string;
-	interactionsEndpointURL: string;
-	httpPort: number;
 	storeDirs?: string[];
 }
 
 export const defaultMahojiOptions = {
-	fastifyOptions: {},
 	discordPublicKey: '',
 	discordToken: '',
 	developmentServer: ''
 } as const;
 
-export class MahojiClient {
-	server: FastifyInstance;
-	cryptoKey: Promise<CryptoKey>;
+export class MahojiClient extends EventEmitter {
 	commands: Store<ICommand>;
 	token: string;
 	developmentServerID: string;
 	applicationID: string;
-	interactionsEndpointURL: string;
-	httpPort: number;
 	storeDirs: string[];
 	restManager: REST;
+	adapters: Adapter[] = [];
 
 	constructor(options: MahojiOptions) {
-		this.cryptoKey = webcrypto.subtle.importKey(
-			'raw',
-			Buffer.from(options.discordPublicKey, 'hex'),
-			{ name: 'NODE-ED25519', namedCurve: 'NODE-ED25519', public: true },
-			false,
-			['verify']
-		);
+		super();
+
 		this.token = options.discordToken;
 		this.developmentServerID = options.developmentServerID;
 		this.applicationID = options.applicationID;
-		this.interactionsEndpointURL = options.interactionsEndpointURL;
-		this.httpPort = options.httpPort;
+
 		this.storeDirs = [...(options.storeDirs ?? [process.cwd()]), join('node_modules', 'mahoji', 'dist')];
 		this.commands = new Store<ICommand>({ name: 'commands', dirs: this.storeDirs, checker: isValidCommand });
 		this.restManager = new REST({ version: '9' }).setToken(this.token);
+	}
 
-		this.server = fastify(mergeDefault(defaultMahojiOptions.fastifyOptions, options.fastifyOptions));
+	async parseInteraction(interaction: APIInteraction): Promise<APIInteractionResponse | null> {
+		if (interaction.type === InteractionType.Ping) {
+			return { type: 1 };
+		}
 
-		this.server.register(fastifySensible, { errorHandler: false });
-		this.server.post(this.interactionsEndpointURL, async (req, res) => {
-			const result = await verifyDiscordCrypto({
-				request: req,
-				cryptoKey: await this.cryptoKey
-			});
+		if (interaction.type === InteractionType.ApplicationCommand) {
+			const slashCommandInteraction = new SlashCommandInteraction(
+				interaction as APIChatInputApplicationCommandInteraction
+			);
 
-			if (!result.isVerified) {
-				return res.badRequest();
+			const command = this.commands.pieces.get(interaction.data.name);
+			if (command) {
+				const response = await command.run({
+					interaction: slashCommandInteraction,
+					options: slashCommandInteraction.options,
+					client: this
+				});
+				const apiResponse: APIInteractionResponse =
+					typeof response === 'string'
+						? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
+						: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
+				return apiResponse;
 			}
+		}
 
-			if (result.interaction.type === InteractionType.Ping) {
-				return res.send({ type: 1 });
-			}
-
-			if (result.interaction.type === InteractionType.ApplicationCommand) {
-				const interaction = result.interaction as APIChatInputApplicationCommandInteraction;
-				const options: Record<string, APIApplicationCommandInteractionDataOptionWithValues['value']> = {};
-				const slashCommandInteraction = new SlashCommandInteraction(interaction);
-
-				if (interaction.data.options) {
-					for (const option of interaction.data.options) {
-						if ('value' in option) {
-							options[option.name] = option.value;
-						}
-					}
-				}
-
-				const command = this.commands.pieces.get(interaction.data.name);
-				if (command) {
-					const response = await command.run({
-						interaction: slashCommandInteraction,
-						options: slashCommandInteraction.options,
-						client: this
-					});
-					const apiResponse: APIInteractionResponse =
-						typeof response === 'string'
-							? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
-							: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
-					return res.send(apiResponse);
-				}
-			}
-
-			return res.notFound();
-		});
+		return null;
 	}
 
 	async start() {
-		await this.cryptoKey;
 		await this.loadStores();
-		return this.server.listen(this.httpPort);
+		await Promise.all(this.adapters.map(adapter => adapter.init()));
 	}
 
 	async loadStores() {

@@ -1,5 +1,6 @@
 import { ApplicationCommandOptionType } from '../../src';
-import type { CommandRunOptions, ICommand } from '../../src/lib/types';
+import type { ICommand } from '../../src/lib/structures/ICommand';
+import type { CommandRunOptions } from '../../src/lib/types';
 
 export const command: ICommand = {
 	name: 'ping',

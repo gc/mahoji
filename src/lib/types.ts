@@ -1,7 +1,6 @@
 import type {
 	APIInteractionDataResolvedChannel,
 	APIInteractionDataResolvedGuildMember,
-	APIInteractionResponseCallbackData,
 	APIRole,
 	APIUser,
 	ApplicationCommandOptionType
@@ -55,13 +54,15 @@ export interface CommandRunOptions<T extends CommandOptions = {}> {
 	client: MahojiClient;
 }
 
-export type ICommand = Readonly<{
-	description: string;
-	options: CommandOption[];
-	run(options: CommandRunOptions): Promise<string | APIInteractionResponseCallbackData>;
-}> &
-	Piece;
-
 export interface Piece {
 	name: string;
+}
+
+export interface AdapterOptions {
+	client: MahojiClient;
+}
+
+export interface Adapter {
+	client: MahojiClient;
+	init: () => Promise<unknown>;
 }
