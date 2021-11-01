@@ -122,7 +122,6 @@ export class MahojiClient {
 
 		// If more than 3 commands need to be updated, bulk update ALL of them.
 		// Otherwise, just individually update the changed command(s)
-		console.log({ changedCommands });
 		if (changedCommands.length > 3) {
 			bulkUpdateCommands({ client: this, commands: changedCommands, guildID: this.developmentServerID });
 		} else {
