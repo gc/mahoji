@@ -69,7 +69,6 @@ export async function verifyDiscordCrypto({
 
 export class FastifyAdapter implements Adapter {
 	client: MahojiClient;
-	name: string;
 	interactionsEndpointURL: string;
 	httpPort: number;
 	server: FastifyInstance;
@@ -91,7 +90,6 @@ export class FastifyAdapter implements Adapter {
 	}) {
 		this.client = client;
 		this.client.adapters.push(this);
-		this.name = '';
 		this.interactionsEndpointURL = interactionsEndpointURL;
 		this.httpPort = httpPort;
 		this.discordPublicKey = discordPublicKey;

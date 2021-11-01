@@ -6,22 +6,11 @@ import {
 } from 'discord-api-types/v9';
 
 import { Time } from '../src/lib/util';
-import { mockClient, mockCommand, mockMember, mockSnowflake } from './testUtil';
-
-const baseRequest = { method: 'POST', url: '/interactions' } as const;
-const commandInteractionBase = {
-	id: '---',
-	application_id: '--',
-	type: InteractionType.ApplicationCommand,
-	channel_id: mockSnowflake,
-	version: 1,
-	token: '---',
-	member: mockMember
-} as const;
+import { baseRequest, commandInteractionBase, mockClient, mockCommand, mockSnowflake } from './testUtil';
 
 describe('server handles requests', () => {
 	test('handle missing/bad-type request', async () => {
-		const { fastifyAdapter, makeHeaders, close } = await mockClient();
+		const { close, inject } = await mockClient();
 
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
@@ -30,14 +19,8 @@ describe('server handles requests', () => {
 			version: 1,
 			token: '---'
 		};
-		const payload = JSON.stringify(pingInteraction);
 
-		const response = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload,
-			headers: await makeHeaders(payload)
-		});
-		expect(response.json()).toStrictEqual({
+		expect(await inject(pingInteraction)).toStrictEqual({
 			error: 'Not Found',
 			message: 'Not Found',
 			statusCode: 404
@@ -46,7 +29,7 @@ describe('server handles requests', () => {
 		await close();
 	});
 	test('handle good request', async () => {
-		const { fastifyAdapter, makeHeaders, close } = await mockClient();
+		const { inject, close } = await mockClient();
 
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
@@ -55,20 +38,14 @@ describe('server handles requests', () => {
 			version: 1,
 			token: '---'
 		};
-		const payload = JSON.stringify(pingInteraction);
 
-		const response = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload,
-			headers: await makeHeaders(payload)
-		});
-		expect(response.json()).toStrictEqual({ type: 1 });
+		expect(await inject(pingInteraction)).toStrictEqual({ type: 1 });
 
 		await close();
 	});
 
 	test('handle crypto-insecure request', async () => {
-		const { fastifyAdapter, makeHeaders, close } = await mockClient();
+		const { fastifyAdapter, close, makeHeaders } = await mockClient();
 
 		const pingInteraction: APIPingInteraction = {
 			id: '---',
@@ -145,7 +122,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles commands', async () => {
-		const { client, makeHeaders, close, fastifyAdapter } = await mockClient();
+		const { inject, close, client } = await mockClient();
 
 		client.commands.pieces.set(mockCommand.name, mockCommand);
 
@@ -158,14 +135,8 @@ describe('server handles requests', () => {
 				options: []
 			}
 		};
-		const payload = JSON.stringify(commandInteraction);
 
-		const response = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload,
-			headers: await makeHeaders(payload)
-		});
-		expect(response.json()).toStrictEqual({
+		expect(await inject(commandInteraction)).toStrictEqual({
 			data: {
 				content: 'Test successfull, Magnaboy!'
 			},
@@ -175,7 +146,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles commands #2', async () => {
-		const { fastifyAdapter, makeHeaders, close } = await mockClient();
+		const { close, inject } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -197,14 +168,8 @@ describe('server handles requests', () => {
 				]
 			}
 		};
-		const payload = JSON.stringify(commandInteraction);
 
-		const response = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload,
-			headers: await makeHeaders(payload)
-		});
-		expect(response.json()).toStrictEqual({
+		expect(await inject(commandInteraction)).toStrictEqual({
 			data: {
 				content: 'kyra, Pong!'.repeat(5)
 			},
@@ -214,7 +179,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles commands #3', async () => {
-		const { makeHeaders, close, fastifyAdapter } = await mockClient();
+		const { close, inject } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -231,14 +196,8 @@ describe('server handles requests', () => {
 				]
 			}
 		};
-		const payload = JSON.stringify(commandInteraction);
 
-		const response = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload,
-			headers: await makeHeaders(payload)
-		});
-		expect(response.json()).toStrictEqual({
+		expect(await inject(commandInteraction)).toStrictEqual({
 			data: {
 				content: 'Magnaboy, Pong!'
 			},
@@ -248,7 +207,7 @@ describe('server handles requests', () => {
 	});
 
 	test('handles unfound commands', async () => {
-		const { makeHeaders, close, fastifyAdapter } = await mockClient();
+		const { close, inject } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -259,19 +218,17 @@ describe('server handles requests', () => {
 				options: []
 			}
 		};
-		const payload = JSON.stringify(commandInteraction);
 
-		const response = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload,
-			headers: await makeHeaders(payload)
+		expect(await inject(commandInteraction)).toStrictEqual({
+			error: 'Not Found',
+			message: 'Not Found',
+			statusCode: 404
 		});
-		expect(response.json()).toStrictEqual({ error: 'Not Found', message: 'Not Found', statusCode: 404 });
 		await close();
 	});
 
 	test('handles commands with subcommands', async () => {
-		const { makeHeaders, close, fastifyAdapter } = await mockClient();
+		const { close, inject } = await mockClient();
 
 		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -288,14 +245,8 @@ describe('server handles requests', () => {
 				]
 			}
 		};
-		const payload = JSON.stringify(commandInteraction);
 
-		const response = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload,
-			headers: await makeHeaders(payload)
-		});
-		expect(response.json()).toStrictEqual({
+		expect(await inject(commandInteraction)).toStrictEqual({
 			data: {
 				content: 'Magnaboy, Pong!'
 			},
@@ -312,19 +263,14 @@ describe('server handles requests', () => {
 				options: undefined
 			}
 		};
-		const payload2 = JSON.stringify(commandInteraction2);
 
-		const response2 = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload: payload2,
-			headers: await makeHeaders(payload2)
-		});
-		expect(response2.json()).toStrictEqual({
+		expect(await inject(commandInteraction2)).toStrictEqual({
 			data: {
 				content: 'Magnaboy, Pong!'
 			},
 			type: 4
 		});
+
 		// no value
 		const commandInteraction3: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
@@ -340,14 +286,8 @@ describe('server handles requests', () => {
 				]
 			}
 		};
-		const payload3 = JSON.stringify(commandInteraction3);
 
-		const response3 = await fastifyAdapter.server.inject({
-			...baseRequest,
-			payload: payload3,
-			headers: await makeHeaders(payload3)
-		});
-		expect(response3.json()).toStrictEqual({
+		expect(await inject(commandInteraction3)).toStrictEqual({
 			data: {
 				content: 'Magnaboy, Pong!'
 			},

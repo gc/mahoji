@@ -3,7 +3,7 @@ import type { FastifyServerOptions } from 'fastify';
 import Mitm from 'mitm';
 import { join } from 'path';
 
-import { APIInteractionGuildMember, MahojiClient } from '../src';
+import { APIInteraction, APIInteractionGuildMember, InteractionType, MahojiClient } from '../src';
 import { FastifyAdapter } from '../src/lib/adapters/fastify';
 import type { ICommand } from '../src/lib/structures/ICommand';
 import { convertCommandToAPICommand, CryptoKey, webcrypto } from '../src/lib/util';
@@ -71,7 +71,39 @@ export interface MockedClient {
 	makeHeaders: (data: string) => Promise<Record<string, string>>;
 	close: () => void;
 	fastifyAdapter: FastifyAdapter;
+	inject: (interaction: APIInteraction) => Promise<any>;
 }
+export const mockSnowflake = '157797566833098752';
+
+export const mockMember: APIInteractionGuildMember = {
+	avatar: null,
+	deaf: false,
+	joined_at: '2016-12-15T17:24:26.926000+00:00',
+	mute: false,
+	nick: null,
+	pending: false,
+	permissions: '1099511627775',
+	premium_since: null,
+	roles: ['645508567457202176', '574491033660948485'],
+	user: {
+		avatar: 'a_58c11318d45efbde40e37dd1ac7408b0',
+		discriminator: '7556',
+		id: '157797566833098752',
+		public_flags: 131_712,
+		username: 'Magnaboy'
+	}
+};
+
+export const baseRequest = { method: 'POST', url: '/interactions' } as const;
+export const commandInteractionBase = {
+	id: '---',
+	application_id: '--',
+	type: InteractionType.ApplicationCommand,
+	channel_id: mockSnowflake,
+	version: 1,
+	token: '---',
+	member: mockMember
+} as const;
 
 export async function mockClient(options?: {
 	clientCommands?: ICommand[];
@@ -130,28 +162,19 @@ export async function mockClient(options?: {
 		return fastifyAdapter.server.server.close();
 	}
 
-	const mockedClient: MockedClient = { keyPair, client, makeHeaders, close, fastifyAdapter };
+	async function inject(interaction: APIInteraction) {
+		const payload = JSON.stringify(interaction);
+
+		const response = await fastifyAdapter.server.inject({
+			...baseRequest,
+			payload,
+			headers: await makeHeaders(payload)
+		});
+
+		return response.json();
+	}
+
+	const mockedClient: MockedClient = { keyPair, client, makeHeaders, close, fastifyAdapter, inject };
 
 	return mockedClient;
 }
-
-export const mockSnowflake = '157797566833098752';
-
-export const mockMember: APIInteractionGuildMember = {
-	avatar: null,
-	deaf: false,
-	joined_at: '2016-12-15T17:24:26.926000+00:00',
-	mute: false,
-	nick: null,
-	pending: false,
-	permissions: '1099511627775',
-	premium_since: null,
-	roles: ['645508567457202176', '574491033660948485'],
-	user: {
-		avatar: 'a_58c11318d45efbde40e37dd1ac7408b0',
-		discriminator: '7556',
-		id: '157797566833098752',
-		public_flags: 131_712,
-		username: 'Magnaboy'
-	}
-};

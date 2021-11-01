@@ -19,6 +19,7 @@ export const command: ICommand = {
 			required: false
 		}
 	],
+	requiredPermissions: ['AddReactions'],
 	run: async ({ interaction, options }: CommandRunOptions<{ name?: string; quantity?: number }>) => {
 		return {
 			content: `${options.name ? options.name : interaction.member!.user.username}, Pong!`.repeat(

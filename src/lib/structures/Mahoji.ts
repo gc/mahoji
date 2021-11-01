@@ -6,9 +6,9 @@ import {
 	APIInteractionResponse,
 	InteractionResponseType,
 	InteractionType,
+	PermissionFlagsBits,
 	Routes
 } from 'discord-api-types/v9';
-import { EventEmitter } from 'events';
 import { join } from 'path';
 
 import type { Adapter } from '../types';
@@ -30,7 +30,7 @@ export const defaultMahojiOptions = {
 	developmentServer: ''
 } as const;
 
-export class MahojiClient extends EventEmitter {
+export class MahojiClient {
 	commands: Store<ICommand>;
 	token: string;
 	developmentServerID: string;
@@ -40,8 +40,6 @@ export class MahojiClient extends EventEmitter {
 	adapters: Adapter[] = [];
 
 	constructor(options: MahojiOptions) {
-		super();
-
 		this.token = options.discordToken;
 		this.developmentServerID = options.developmentServerID;
 		this.applicationID = options.applicationID;
@@ -63,6 +61,20 @@ export class MahojiClient extends EventEmitter {
 
 			const command = this.commands.pieces.get(interaction.data.name);
 			if (command) {
+				if (command.requiredPermissions) {
+					if (!slashCommandInteraction.member) return null;
+					const permissions = BigInt(slashCommandInteraction.member.permissions);
+					for (const perm of command.requiredPermissions) {
+						const bit = PermissionFlagsBits[perm];
+						if ((permissions & bit) !== bit) {
+							return {
+								data: { content: "You don't have permission to use this command." },
+								type: InteractionResponseType.ChannelMessageWithSource
+							};
+						}
+					}
+				}
+
 				const response = await command.run({
 					interaction: slashCommandInteraction,
 					options: slashCommandInteraction.options,
@@ -110,6 +122,7 @@ export class MahojiClient extends EventEmitter {
 
 		// If more than 3 commands need to be updated, bulk update ALL of them.
 		// Otherwise, just individually update the changed command(s)
+		console.log({ changedCommands });
 		if (changedCommands.length > 3) {
 			bulkUpdateCommands({ client: this, commands: changedCommands, guildID: this.developmentServerID });
 		} else {
