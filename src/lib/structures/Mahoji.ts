@@ -1,19 +1,20 @@
 import { REST } from '@discordjs/rest';
 import {
 	APIApplicationCommand,
+	APIApplicationCommandAutocompleteResponse,
 	APIChatInputApplicationCommandInteraction,
 	APIInteraction,
-	APIInteractionResponse,
 	InteractionResponseType,
 	InteractionType,
+	MessageFlags,
 	PermissionFlagsBits,
 	Routes
 } from 'discord-api-types/v9';
 import { join } from 'path';
 
-import type { Adapter } from '../types';
-import { bulkUpdateCommands, isValidCommand, updateCommand } from '../util';
-import type { ICommand } from './ICommand';
+import type { Adapter, AutocompleteData } from '../types';
+import { autocompleteResult, bulkUpdateCommands, handleAutocomplete, isValidCommand, updateCommand } from '../util';
+import type { ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
 
@@ -49,18 +50,42 @@ export class MahojiClient {
 		this.restManager = new REST({ version: '9' }).setToken(this.token);
 	}
 
-	async parseInteraction(interaction: APIInteraction): Promise<APIInteractionResponse | null> {
+	async parseInteraction(
+		interaction: APIInteraction
+	): Promise<InteractionResponseWithBufferAttachments | APIApplicationCommandAutocompleteResponse | null> {
+		console.log(JSON.stringify(interaction, null, 4));
+
 		if (interaction.type === InteractionType.Ping) {
 			return { type: 1 };
 		}
 
+		// Only support guild interactions for now, so we're guaranteed to have a member.
+		if (!interaction.member) return null;
+		const { member } = interaction;
+
+		if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
+			const { data } = interaction;
+			const options = (data as any).options as AutocompleteData[];
+
+			if (!data) return autocompleteResult([]);
+			const command = this.commands.pieces.get(data.name);
+			return {
+				type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+				data: {
+					choices: await handleAutocomplete(command, options, member)
+				}
+			};
+		}
+
 		if (interaction.type === InteractionType.ApplicationCommand) {
 			const slashCommandInteraction = new SlashCommandInteraction(
+				// TODO fix this
 				interaction as APIChatInputApplicationCommandInteraction
 			);
 
 			const command = this.commands.pieces.get(interaction.data.name);
 			if (command) {
+				// Permissions
 				if (command.requiredPermissions) {
 					if (!slashCommandInteraction.member) return null;
 					const permissions = BigInt(slashCommandInteraction.member.permissions);
@@ -68,7 +93,10 @@ export class MahojiClient {
 						const bit = PermissionFlagsBits[perm];
 						if ((permissions & bit) !== bit) {
 							return {
-								data: { content: "You don't have permission to use this command." },
+								data: {
+									content: "You don't have permission to use this command.",
+									flags: MessageFlags.Ephemeral
+								},
 								type: InteractionResponseType.ChannelMessageWithSource
 							};
 						}
@@ -78,9 +106,10 @@ export class MahojiClient {
 				const response = await command.run({
 					interaction: slashCommandInteraction,
 					options: slashCommandInteraction.options,
-					client: this
+					client: this,
+					member: slashCommandInteraction.member!
 				});
-				const apiResponse: APIInteractionResponse =
+				const apiResponse: InteractionResponseWithBufferAttachments =
 					typeof response === 'string'
 						? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
 						: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };

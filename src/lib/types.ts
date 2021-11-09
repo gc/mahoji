@@ -1,6 +1,8 @@
 import type {
+	APIApplicationCommandOptionChoice,
 	APIInteractionDataResolvedChannel,
 	APIInteractionDataResolvedGuildMember,
+	APIInteractionGuildMember,
 	APIRole,
 	APIUser,
 	ApplicationCommandOptionType
@@ -23,10 +25,20 @@ export type CommandOption = {
 	| {
 			type: ApplicationCommandOptionType.String;
 			choices?: { name: string; value: string }[];
+			autocomplete?: (
+				value: string,
+				member: APIInteractionGuildMember
+			) => Promise<APIApplicationCommandOptionChoice[]>;
 	  }
 	| {
 			type: ApplicationCommandOptionType.Integer | ApplicationCommandOptionType.Number;
 			choices?: { name: string; value: number }[];
+			autocomplete?: (
+				value: number,
+				member: APIInteractionGuildMember
+			) => Promise<APIApplicationCommandOptionChoice[]>;
+			min_value?: number;
+			max_value?: number;
 	  }
 	| {
 			type:
@@ -52,6 +64,7 @@ export interface CommandRunOptions<T extends CommandOptions = {}> {
 	interaction: SlashCommandInteraction;
 	options: T;
 	client: MahojiClient;
+	member: APIInteractionGuildMember;
 }
 
 export interface Piece {
@@ -65,4 +78,11 @@ export interface AdapterOptions {
 export interface Adapter {
 	client: MahojiClient;
 	init: () => Promise<unknown>;
+}
+
+export interface AutocompleteData {
+	type: number;
+	name: string;
+	value: string | number;
+	focused: boolean;
 }

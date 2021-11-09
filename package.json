@@ -26,7 +26,7 @@
     "@types/mitm": "^1.3.4",
     "@types/node": "^16.11.4",
     "@types/node-fetch": "^2.5.3",
-    "discord-api-types": "0.25.0-next.a507765.1635037403",
+    "discord-api-types": "0.25.0-next.bc1d03e.1635987681",
     "eslint": "^7.32.0",
     "jest": "^27.0.1",
     "mitm": "^1.7.2",

@@ -16,8 +16,7 @@ export const command: ICommand = {
 					name: 'ping',
 					value: 'ping'
 				}
-			],
-			required: true
+			]
 		}
 	],
 	run: async ({ interaction }: CommandRunOptions<{ command: 'ping' }>) => {

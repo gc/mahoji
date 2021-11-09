@@ -1,6 +1,7 @@
 import {
 	APIChatInputApplicationCommandInteraction,
 	APIInteractionGuildMember,
+	MessageFlags,
 	PermissionFlagsBits
 } from 'discord-api-types/v9';
 
@@ -73,9 +74,11 @@ describe('server handles requests', () => {
 			}
 		};
 		expect(await inject(commandInteraction)).toStrictEqual({
-			error: 'Not Found',
-			message: 'Not Found',
-			statusCode: 404
+			data: {
+				content: "You don't have permission to use this command.",
+				flags: MessageFlags.Ephemeral
+			},
+			type: 4
 		});
 		await close();
 	});

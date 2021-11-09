@@ -1,19 +1,24 @@
 import { isFunction } from '@sapphire/utilities';
 import crypto from 'crypto';
 import {
+	APIApplicationCommandAutocompleteResponse,
+	APIApplicationCommandOption,
+	APIApplicationCommandOptionChoice,
 	APIChatInputApplicationCommandInteraction,
 	APIChatInputApplicationCommandInteractionDataResolved,
 	APIInteractionDataResolvedChannel,
 	APIInteractionDataResolvedGuildMember,
+	APIInteractionGuildMember,
 	APIRole,
 	APIUser,
 	ApplicationCommandOptionType,
+	InteractionResponseType,
 	RESTPostAPIApplicationGuildCommandsJSONBody,
 	Routes,
 	Snowflake
 } from 'discord-api-types/v9';
 
-import type { CommandOptions } from '../lib/types';
+import type { AutocompleteData, CommandOption, CommandOptions } from '../lib/types';
 import type { ICommand } from './structures/ICommand';
 import type { MahojiClient } from './structures/Mahoji';
 
@@ -43,11 +48,31 @@ export function isValidPiece(data: any) {
 	return true;
 }
 
+function convertCommandOptionToAPIOption(option: CommandOption): APIApplicationCommandOption {
+	switch (option.type) {
+		case ApplicationCommandOptionType.Number:
+		case ApplicationCommandOptionType.Integer:
+		case ApplicationCommandOptionType.String: {
+			return {
+				...option,
+				autocomplete: 'autocomplete' in option
+			};
+		}
+
+		default: {
+			return {
+				...option,
+				options: 'options' in option ? option.options?.map(convertCommandOptionToAPIOption) : []
+			};
+		}
+	}
+}
+
 export function convertCommandToAPICommand(cmd: ICommand): RESTPostAPIApplicationGuildCommandsJSONBody {
 	return {
 		name: cmd.name,
 		description: cmd.description,
-		options: [...cmd.options]
+		options: cmd.options.map(convertCommandOptionToAPIOption)
 	};
 }
 
@@ -82,7 +107,6 @@ export async function updateCommand({
 	guildID: Snowflake | null;
 }) {
 	const apiCommand = convertCommandToAPICommand(command);
-
 	const route =
 		guildID === null
 			? Routes.applicationCommands(client.applicationID)
@@ -135,4 +159,32 @@ export function convertAPIOptionsToCommandOptions(
 	}
 
 	return parsedOptions;
+}
+
+export const autocompleteResult = (
+	options: APIApplicationCommandOptionChoice[]
+): APIApplicationCommandAutocompleteResponse => ({
+	type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+	data: {
+		choices: options
+	}
+});
+
+export async function handleAutocomplete(
+	command: ICommand | undefined,
+	autocompleteData: AutocompleteData[],
+	member: APIInteractionGuildMember
+): Promise<APIApplicationCommandOptionChoice[]> {
+	const value = autocompleteData[0]?.value;
+	if (!command || value === undefined) return [];
+	const optionBeingAutocompleted = command.options.find(o => o.name === autocompleteData[0].name);
+	if (
+		optionBeingAutocompleted &&
+		'autocomplete' in optionBeingAutocompleted &&
+		optionBeingAutocompleted.autocomplete !== undefined
+	) {
+		const autocompleteResult = await optionBeingAutocompleted.autocomplete(value as never, member);
+		return autocompleteResult;
+	}
+	return [];
 }
