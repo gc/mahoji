@@ -1,4 +1,5 @@
 import type {
+	APIApplicationCommandAutocompleteResponse,
 	APIApplicationCommandOptionChoice,
 	APIInteractionDataResolvedChannel,
 	APIInteractionDataResolvedGuildMember,
@@ -9,6 +10,7 @@ import type {
 } from 'discord-api-types/v9';
 
 import type { MahojiClient } from '..';
+import type { InteractionResponseWithBufferAttachments } from './structures/ICommand';
 import type { SlashCommandInteraction } from './structures/SlashCommandInteraction';
 
 export type { APIApplicationCommandOption, APIChatInputApplicationCommandInteraction } from 'discord-api-types/v9';
@@ -50,15 +52,17 @@ export type CommandOption = {
 	  }
 );
 
-export type CommandOptions = Record<
-	string,
+type MahojiCommandOption =
 	| number
 	| string
 	| { user: APIUser; member: APIInteractionDataResolvedGuildMember }
 	| APIInteractionDataResolvedChannel
 	| APIRole
-	| boolean
->;
+	| boolean;
+
+export interface CommandOptions {
+	[key: string]: MahojiCommandOption | CommandOptions;
+}
 
 export interface CommandRunOptions<T extends CommandOptions = {}> {
 	interaction: SlashCommandInteraction;
@@ -86,3 +90,5 @@ export interface AutocompleteData {
 	value: string | number;
 	focused: boolean;
 }
+
+export type InteractionResponse = InteractionResponseWithBufferAttachments | APIApplicationCommandAutocompleteResponse;

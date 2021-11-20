@@ -1,7 +1,6 @@
 import { REST } from '@discordjs/rest';
 import {
 	APIApplicationCommand,
-	APIApplicationCommandAutocompleteResponse,
 	APIChatInputApplicationCommandInteraction,
 	APIInteraction,
 	InteractionResponseType,
@@ -12,8 +11,17 @@ import {
 } from 'discord-api-types/v9';
 import { join } from 'path';
 
-import type { Adapter, AutocompleteData } from '../types';
-import { autocompleteResult, bulkUpdateCommands, handleAutocomplete, isValidCommand, updateCommand } from '../util';
+import type { Adapter, AutocompleteData, InteractionResponse } from '../types';
+import {
+	autocompleteResult,
+	bitFieldHasBit,
+	bulkUpdateCommands,
+	commandOptionMatches,
+	convertCommandOptionToAPIOption,
+	handleAutocomplete,
+	isValidCommand,
+	updateCommand
+} from '../util';
 import type { ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
@@ -50,11 +58,7 @@ export class MahojiClient {
 		this.restManager = new REST({ version: '9' }).setToken(this.token);
 	}
 
-	async parseInteraction(
-		interaction: APIInteraction
-	): Promise<InteractionResponseWithBufferAttachments | APIApplicationCommandAutocompleteResponse | null> {
-		console.log(JSON.stringify(interaction, null, 4));
-
+	async parseInteraction(interaction: APIInteraction): Promise<InteractionResponse | null> {
 		if (interaction.type === InteractionType.Ping) {
 			return { type: 1 };
 		}
@@ -88,10 +92,8 @@ export class MahojiClient {
 				// Permissions
 				if (command.requiredPermissions) {
 					if (!slashCommandInteraction.member) return null;
-					const permissions = BigInt(slashCommandInteraction.member.permissions);
 					for (const perm of command.requiredPermissions) {
-						const bit = PermissionFlagsBits[perm];
-						if ((permissions & bit) !== bit) {
+						if (!bitFieldHasBit(slashCommandInteraction.member.permissions, PermissionFlagsBits[perm])) {
 							return {
 								data: {
 									content: "You don't have permission to use this command.",
@@ -138,14 +140,28 @@ export class MahojiClient {
 		const changedCommands: ICommand[] = [];
 
 		// Find commands that don't match their previous values
-		for (const cmd of this.commands.values) {
-			const liveCmd = liveCommands.find(c => c.name === cmd.name);
-			if (
-				!liveCmd ||
-				cmd.description !== liveCmd.description ||
-				JSON.stringify(liveCmd.options) !== JSON.stringify(cmd.options)
-			) {
-				changedCommands.push(cmd);
+		for (const currentCommand of this.commands.values) {
+			const liveCmd = liveCommands.find(c => c.name === currentCommand.name);
+			if (!liveCmd) {
+				console.log(`${currentCommand.name} changed because doesnt exist at all`);
+				changedCommands.push(currentCommand);
+				continue;
+			}
+			if (currentCommand.description !== liveCmd.description) {
+				console.log(`${currentCommand.name} changed because description changed`);
+				changedCommands.push(currentCommand);
+				continue;
+			}
+			const currentOptions = currentCommand.options.map(convertCommandOptionToAPIOption);
+			const liveOptions = liveCmd.options;
+
+			for (let i = 0; i < currentOptions.length; i++) {
+				const liveOpt = liveOptions?.[i];
+				if (!liveOpt || !commandOptionMatches(liveOpt, currentOptions[i])) {
+					console.log({ currentOptions, liveOptions });
+					console.log(`${currentCommand.name} changed because ${currentOptions[i]?.name} changed`);
+					changedCommands.push(currentCommand);
+				}
 			}
 		}
 

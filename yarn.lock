@@ -1507,10 +1507,10 @@ dir-glob@^3.0.1:
   dependencies:
     path-type "^4.0.0"
 
-discord-api-types@0.25.0-next.bc1d03e.1635987681:
-  version "0.25.0-next.bc1d03e.1635987681"
-  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.25.0-next.bc1d03e.1635987681.tgz#0e62889223d480cd5222cb83595a3a0095400bc7"
-  integrity sha512-B5dMeWOl/kqtqnd9EZf+99D79+IfbRFkDzZEDDBGSJeXN5Tlexwpoxcc2d7KWgasqd59lPrHe3Ybgf/cwi991g==
+discord-api-types@0.25.0-next.fa54b9d.1637238791:
+  version "0.25.0-next.fa54b9d.1637238791"
+  resolved "https://registry.yarnpkg.com/discord-api-types/-/discord-api-types-0.25.0-next.fa54b9d.1637238791.tgz#0724194fab57d02e5ba8f0d34dd11177497b2dcb"
+  integrity sha512-AsGvAClxfqXgGPmP8H/MkGmB8d7voLA40Wo+Xz5fnJaFWsE+B8t5mj48AiNdLTOfjptHdPFKSQ0zMFTNQydsCw==
 
 discord-api-types@^0.18.1:
   version "0.18.1"

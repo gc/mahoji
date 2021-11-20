@@ -4,7 +4,7 @@ import fastifySensible from 'fastify-sensible';
 
 import type { MahojiClient } from '../..';
 import type { Adapter } from '../types';
-import { CryptoKey, webcrypto } from '../util';
+import { CryptoKey, handleFormData, webcrypto } from '../util';
 
 type VerifiedCryptoResponse =
 	| {
@@ -106,6 +106,17 @@ export class FastifyAdapter implements Adapter {
 
 		this.server.register(fastifySensible, { errorHandler: false });
 
+		this.server.addHook('onError', (__, _, err) => console.error(err));
+
+		this.server.setErrorHandler((error, _, reply) => {
+			console.error(error);
+			reply.status(500).send({
+				message: 'Internal server error',
+				error: 'Internal server error',
+				statusCode: 500
+			});
+		});
+
 		this.server.post(this.interactionsEndpointURL, async (req, res) => {
 			const result = await verifyDiscordCrypto({
 				request: req,
@@ -118,8 +129,11 @@ export class FastifyAdapter implements Adapter {
 
 			const response = await this.client.parseInteraction(result.interaction);
 			if (response) {
-				return res.send(response);
+				const formData = handleFormData(response);
+				res.headers(formData.getHeaders()).send(formData);
+				return;
 			}
+
 			return res.notFound();
 		});
 	}

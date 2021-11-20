@@ -49,6 +49,24 @@ describe('utils', () => {
 	test('convertAPIOptionsToCommandOptions', async () => {
 		expect(convertAPIOptionsToCommandOptions(undefined, {})).toStrictEqual({});
 		expect(convertAPIOptionsToCommandOptions([], {})).toStrictEqual({});
+
+		// expect(
+		// 	convertAPIOptionsToCommandOptions(
+		// 		[
+		// 			{
+		// 				type: 2,
+		// 				options: [
+		// 					{
+		// 						type: 1,
+		// 						name: 'spawnrandomcards'
+		// 					}
+		// 				],
+		// 				name: 'command'
+		// 			}
+		// 		] as any,
+		// 		{}
+		// 	)
+		// ).toStrictEqual({ spawnrandomcards: {} });
 		expect(
 			convertAPIOptionsToCommandOptions(
 				commandInteractionModActions.data.options,
