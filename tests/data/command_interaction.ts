@@ -9,7 +9,7 @@ export const commandInteractionModActions = {
 				name: 'ban',
 				options: [
 					{
-						name: 'user',
+						name: 'user_to_ban',
 						options: [
 							{
 								name: 'user',

@@ -143,12 +143,10 @@ export class MahojiClient {
 		for (const currentCommand of this.commands.values) {
 			const liveCmd = liveCommands.find(c => c.name === currentCommand.name);
 			if (!liveCmd) {
-				console.log(`${currentCommand.name} changed because doesnt exist at all`);
 				changedCommands.push(currentCommand);
 				continue;
 			}
 			if (currentCommand.description !== liveCmd.description) {
-				console.log(`${currentCommand.name} changed because description changed`);
 				changedCommands.push(currentCommand);
 				continue;
 			}
@@ -157,8 +155,9 @@ export class MahojiClient {
 
 			for (let i = 0; i < currentOptions.length; i++) {
 				const liveOpt = liveOptions?.[i];
-				if (!liveOpt || !commandOptionMatches(liveOpt, currentOptions[i])) {
-					console.log(`${currentCommand.name} changed because ${currentOptions[i]?.name} changed`);
+
+				const match = liveOpt && commandOptionMatches(liveOpt, currentOptions[i]);
+				if (match && !match.matches) {
 					changedCommands.push(currentCommand);
 				}
 			}

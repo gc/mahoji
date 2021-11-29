@@ -1,5 +1,6 @@
 import type { APIInteraction } from 'discord-api-types/v9';
 import fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
+import FormData from 'form-data';
 
 import type { MahojiClient } from '../..';
 import type { Adapter } from '../types';
@@ -31,19 +32,19 @@ declare module 'fastify' {
 /* eslint-disable func-names */
 function decorate(server: FastifyInstance) {
 	server.decorateReply('unauthorized', function (string?: string) {
-		this.code(401).send(makeErrorResponse(string ?? 'Unauthorized.', 401));
+		this.code(401).send(makeErrorResponse(string ?? 'Unauthorized', 401));
 	});
 	server.decorateReply('notFound', function (string?: string) {
-		this.code(404).send(makeErrorResponse(string ?? 'Unauthorized.', 404));
+		this.code(404).send(makeErrorResponse(string ?? 'Not Found', 404));
 	});
 	server.decorateReply('badRequest', function (string?: string) {
-		this.code(400).send(makeErrorResponse(string ?? 'Unauthorized.', 400));
+		this.code(400).send(makeErrorResponse(string ?? 'Bad Request', 400));
 	});
 	server.decorateReply('internalServerError', function (string?: string) {
-		this.code(500).send(makeErrorResponse(string ?? 'Unauthorized.', 500));
+		this.code(500).send(makeErrorResponse(string ?? 'Internal server error', 500));
 	});
 	server.decorateReply('tooManyRequests', function (string?: string) {
-		this.code(429).send(makeErrorResponse(string ?? 'Too many requests.', 429));
+		this.code(429).send(makeErrorResponse(string ?? 'Too many requests', 429));
 	});
 }
 
@@ -145,17 +146,7 @@ export class FastifyAdapter implements Adapter {
 
 		this.server = fastify(fastifyOptions);
 
-		// this.server.addHook('onError', (__, _, err) => console.error(err));
-
-		// this.server.setErrorHandler((error, _, reply) => {
-		// 	console.error(error);
-		// 	if (error.)
-		// 	reply.status(500).send({
-		// 		message: 'Internal server error',
-		// 		error: 'Internal server error',
-		// 		statusCode: 500
-		// 	});
-		// });
+		this.server.addHook('onError', (__, _, err) => console.error(err));
 
 		this.server.post(this.interactionsEndpointURL, async (req, res) => {
 			const result = await verifyDiscordCrypto({
@@ -170,7 +161,11 @@ export class FastifyAdapter implements Adapter {
 			const response = await this.client.parseInteraction(result.interaction);
 			if (response) {
 				const formData = handleFormData(response);
-				res.headers(formData.getHeaders()).send(formData);
+				if (formData instanceof FormData) {
+					res.headers(formData.getHeaders()).send(formData);
+				} else {
+					res.send(formData);
+				}
 				return;
 			}
 

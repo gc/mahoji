@@ -53,24 +53,37 @@ export function isValidPiece(data: any) {
 export function commandOptionMatches(
 	optionX: APIApplicationCommandOption,
 	optionY: APIApplicationCommandOption
-): boolean {
-	if (optionX.type !== optionY.type) return false;
-	if (optionX.name !== optionY.name) return false;
-	if (optionX.description !== optionY.description) return false;
-	if ((optionX.required || false) !== (optionY.required || false)) return false;
-	if ((optionX.autocomplete || false) !== (optionY.autocomplete || false)) return false;
+): { matches: true } | { matches: false; changedField: string } {
+	if (optionX.type !== optionY.type) return { matches: false, changedField: 'type' };
+	if (optionX.name !== optionY.name) return { matches: false, changedField: 'name' };
+	if (optionX.description !== optionY.description) return { matches: false, changedField: 'description' };
+	if ((optionX.required || false) !== (optionY.required || false))
+		return { matches: false, changedField: 'required' };
+	if ((optionX.autocomplete || false) !== (optionY.autocomplete || false))
+		return { matches: false, changedField: 'autocomplete' };
 	if (
 		(optionX.type === ApplicationCommandOptionType.Subcommand &&
 			optionY.type === ApplicationCommandOptionType.Subcommand) ||
 		(optionX.type === ApplicationCommandOptionType.SubcommandGroup &&
 			optionY.type === ApplicationCommandOptionType.SubcommandGroup)
 	) {
-		if (optionX.options?.length !== optionY.options?.length) return false;
-		if ((!optionX.options && optionY.options) || (!optionY.options && optionX.options)) return false;
-		return optionX.options!.every((opt, index) => commandOptionMatches(opt, optionY.options![index]));
+		if (
+			optionX.options?.length !== optionY.options?.length &&
+			((optionX.options?.length ?? 0) > 0 || (optionY.options?.length ?? 0) > 0)
+		) {
+			return {
+				matches: false,
+				changedField: `length of options (${optionX.options?.length},${optionY.options?.length})`
+			};
+		}
+
+		const notMatchingResult = optionX.options
+			?.map((opt, index) => commandOptionMatches(opt, optionY.options![index]))
+			.find(res => !res.matches);
+		return notMatchingResult || { matches: true };
 	}
 
-	return true;
+	return { matches: true };
 }
 
 export function convertCommandOptionToAPIOption(option: CommandOption): APIApplicationCommandOption {
@@ -111,7 +124,6 @@ export async function bulkUpdateCommands({
 	commands: ICommand[];
 	guildID: Snowflake | null;
 }) {
-	console.log('Updating all commands');
 	const apiCommands = commands.map(convertCommandToAPICommand);
 
 	const route =
@@ -133,8 +145,6 @@ export async function updateCommand({
 	command: ICommand;
 	guildID: Snowflake | null;
 }) {
-	console.log(`Updating command: ${command.name}`);
-
 	const apiCommand = convertCommandToAPICommand(command);
 	const route =
 		guildID === null
@@ -168,9 +178,9 @@ export function convertAPIOptionsToCommandOptions(
 			opt.type === ApplicationCommandOptionType.SubcommandGroup ||
 			opt.type === ApplicationCommandOptionType.Subcommand
 		) {
-			for (const entry of opt.options) {
+			for (const entry of opt.options ?? []) {
 				if (entry.type === ApplicationCommandOptionType.Subcommand) {
-					parsedOptions[entry.name] = convertAPIOptionsToCommandOptions(entry.options, undefined);
+					parsedOptions[entry.name] = convertAPIOptionsToCommandOptions(entry.options, resolvedObjects);
 				} else {
 					for (const [key, value] of Object.entries(
 						convertAPIOptionsToCommandOptions(opt.options, resolvedObjects)
@@ -239,18 +249,23 @@ export function convertAttachments(data: InteractionResponseWithBufferAttachment
 	};
 }
 
-export function handleFormData(response: InteractionResponse) {
-	const finalBody = new FormData();
+export function handleFormData(response: InteractionResponse): InteractionResponse | FormData {
+	const attachments = response.data && 'attachments' in response.data && response.data.attachments;
 
-	if (!response.data || response.type === InteractionResponseType.ApplicationCommandAutocompleteResult) {
-		finalBody.append('payload_json', JSON.stringify(response));
-		return finalBody;
+	if (
+		!attachments ||
+		!response.data ||
+		response.type === InteractionResponseType.ApplicationCommandAutocompleteResult
+	) {
+		return response;
 	}
 
+	const finalBody = new FormData();
+
 	// Parse attachments
-	if (response.data && 'attachments' in response.data && response.data.attachments) {
-		for (let i = 0; i < response.data.attachments.length; i++) {
-			const attachment = response.data.attachments[i];
+	if (attachments) {
+		for (let i = 0; i < attachments.length; i++) {
+			const attachment = attachments[i];
 			finalBody.append(`files[${i}]`, attachment.buffer, attachment.fileName);
 		}
 	}
