@@ -1,4 +1,3 @@
-import { isFunction } from '@sapphire/utilities';
 import crypto from 'crypto';
 import {
 	APIApplicationCommandAutocompleteResponse,
@@ -41,7 +40,7 @@ export function isValidCommand(data: any): data is ICommand {
 	) {
 		return false;
 	}
-	if (!isFunction(data.run)) return false;
+	if (typeof data.run !== 'function') return false;
 	return true;
 }
 
