@@ -1,4 +1,4 @@
-name: Code Quality
+name: NPM Publish
 
 on:
     pull_request:
@@ -23,7 +23,7 @@ jobs:
             - name: Install Dependencies
               run: yarn --frozen-lockfile
             - name: Build
-              run: yarn build
+              run: yarn dev:build
             - name: Publish
               run: npm publish --tag pr-${{ github.sha }}
               env:
