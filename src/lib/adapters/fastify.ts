@@ -176,6 +176,8 @@ export class FastifyAdapter implements Adapter {
 
 			return res.notFound();
 		});
+
+		decorate(this.server);
 	}
 
 	async init() {
