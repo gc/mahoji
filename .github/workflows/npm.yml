@@ -26,6 +26,6 @@ jobs:
             - name: Build
               run: yarn dev:build
             - name: Publish
-              run: npm publish --tag pr-${{ github.sha }}
+              run: npm publish --tag pr${GITHUB_SHA::8}
               env:
                 NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
