@@ -243,7 +243,7 @@ export function handleFormData(response: InteractionResponse) {
 	const finalBody = new FormData();
 
 	if (!response.data || response.type === InteractionResponseType.ApplicationCommandAutocompleteResult) {
-		finalBody.append('payload_json', JSON.stringify(response.data));
+		finalBody.append('payload_json', JSON.stringify(response));
 		return finalBody;
 	}
 
@@ -254,7 +254,6 @@ export function handleFormData(response: InteractionResponse) {
 			finalBody.append(`files[${i}]`, attachment.buffer, attachment.fileName);
 		}
 	}
-
 	finalBody.append('payload_json', JSON.stringify(convertAttachments(response)));
 
 	return finalBody;

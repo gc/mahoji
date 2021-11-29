@@ -158,7 +158,6 @@ export class MahojiClient {
 			for (let i = 0; i < currentOptions.length; i++) {
 				const liveOpt = liveOptions?.[i];
 				if (!liveOpt || !commandOptionMatches(liveOpt, currentOptions[i])) {
-					console.log({ currentOptions, liveOptions });
 					console.log(`${currentCommand.name} changed because ${currentOptions[i]?.name} changed`);
 					changedCommands.push(currentCommand);
 				}
