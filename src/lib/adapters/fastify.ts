@@ -1,10 +1,51 @@
 import type { APIInteraction } from 'discord-api-types/v9';
 import fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
-import fastifySensible from 'fastify-sensible';
 
 import type { MahojiClient } from '../..';
 import type { Adapter } from '../types';
 import { CryptoKey, handleFormData, webcrypto } from '../util';
+
+interface Response {
+	message: string;
+	error: string;
+	statusCode: number;
+}
+
+export const makeErrorResponse = (err: string, code: number): Response => ({
+	message: err,
+	error: err,
+	statusCode: code
+});
+
+declare module 'fastify' {
+	interface FastifyReply {
+		unauthorized(str?: string): FastifyReply;
+		notFound(str?: string): FastifyReply;
+		badRequest(str?: string): FastifyReply;
+		internalServerError(str?: string): FastifyReply;
+		tooManyRequests(str?: string): FastifyReply;
+	}
+}
+
+/* eslint-disable @typescript-eslint/no-invalid-this */
+/* eslint-disable func-names */
+function decorate(server: FastifyInstance) {
+	server.decorateReply('unauthorized', function (string?: string) {
+		this.code(401).send(makeErrorResponse(string ?? 'Unauthorized.', 401));
+	});
+	server.decorateReply('notFound', function (string?: string) {
+		this.code(404).send(makeErrorResponse(string ?? 'Unauthorized.', 404));
+	});
+	server.decorateReply('badRequest', function (string?: string) {
+		this.code(400).send(makeErrorResponse(string ?? 'Unauthorized.', 400));
+	});
+	server.decorateReply('internalServerError', function (string?: string) {
+		this.code(500).send(makeErrorResponse(string ?? 'Unauthorized.', 500));
+	});
+	server.decorateReply('tooManyRequests', function (string?: string) {
+		this.code(429).send(makeErrorResponse(string ?? 'Too many requests.', 429));
+	});
+}
 
 type VerifiedCryptoResponse =
 	| {
@@ -104,18 +145,17 @@ export class FastifyAdapter implements Adapter {
 
 		this.server = fastify(fastifyOptions);
 
-		this.server.register(fastifySensible, { errorHandler: false });
+		// this.server.addHook('onError', (__, _, err) => console.error(err));
 
-		this.server.addHook('onError', (__, _, err) => console.error(err));
-
-		this.server.setErrorHandler((error, _, reply) => {
-			console.error(error);
-			reply.status(500).send({
-				message: 'Internal server error',
-				error: 'Internal server error',
-				statusCode: 500
-			});
-		});
+		// this.server.setErrorHandler((error, _, reply) => {
+		// 	console.error(error);
+		// 	if (error.)
+		// 	reply.status(500).send({
+		// 		message: 'Internal server error',
+		// 		error: 'Internal server error',
+		// 		statusCode: 500
+		// 	});
+		// });
 
 		this.server.post(this.interactionsEndpointURL, async (req, res) => {
 			const result = await verifyDiscordCrypto({
