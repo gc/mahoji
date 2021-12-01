@@ -1,5 +1,6 @@
 import { ApplicationCommandOptionType } from '../../src';
-import type { CommandRunOptions, ICommand } from '../../src/lib/types';
+import type { ICommand } from '../../src/lib/structures/ICommand';
+import type { CommandRunOptions } from '../../src/lib/types';
 
 export const command: ICommand = {
 	name: 'ping',
@@ -18,9 +19,12 @@ export const command: ICommand = {
 			required: false
 		}
 	],
+	requiredPermissions: ['AddReactions'],
 	run: async ({ interaction, options }: CommandRunOptions<{ name?: string; quantity?: number }>) => {
-		return `${options.name ? options.name : interaction.member!.user.username}, Pong!`.repeat(
-			options.quantity ?? 1
-		);
+		return {
+			content: `${options.name ? options.name : interaction.member!.user.username}, Pong!`.repeat(
+				options.quantity ?? 1
+			)
+		};
 	}
 };

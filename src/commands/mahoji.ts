@@ -1,6 +1,7 @@
 import { ApplicationCommandOptionType } from 'discord-api-types/v9';
 
-import type { CommandRunOptions, ICommand } from '../lib/types';
+import type { ICommand } from '../lib/structures/ICommand';
+import type { CommandRunOptions } from '../lib/types';
 
 export const command: ICommand = {
 	name: 'mahoji',
@@ -15,8 +16,7 @@ export const command: ICommand = {
 					name: 'ping',
 					value: 'ping'
 				}
-			],
-			required: true
+			]
 		}
 	],
 	run: async ({ interaction }: CommandRunOptions<{ command: 'ping' }>) => {

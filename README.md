@@ -19,10 +19,11 @@
 Mahoji is a framework that allows you to create modern discord bots with slash/application/message commands.
 
 
-## Principles and Features
+## Features
 
 -   Simple, straightforward and small.
 -   Automatically hot-reloads commands in development.
+-   Respects ratelimits, using `@discordjs/rest` for API requests.
 
 ## Installation & Usage
 
@@ -50,3 +51,4 @@ const client = new MahojiClient({
 
 client.start();
 ```
+

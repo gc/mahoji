@@ -1,171 +1,174 @@
-import { mergeDefault } from '@sapphire/utilities';
+import { REST } from '@discordjs/rest';
 import {
-	APIApplicationCommandInteractionDataOptionWithValues,
+	APIApplicationCommand,
 	APIChatInputApplicationCommandInteraction,
-	APIInteractionResponse,
+	APIInteraction,
 	InteractionResponseType,
-	InteractionType
+	InteractionType,
+	MessageFlags,
+	PermissionFlagsBits,
+	Routes
 } from 'discord-api-types/v9';
-import { fastify, FastifyInstance, FastifyServerOptions } from 'fastify';
-import fastifySensible from 'fastify-sensible';
-import fs from 'fs/promises';
 import { join } from 'path';
 
-import { verifyDiscordCrypto } from '../handler';
-import type { CachedCommand, ICommand } from '../types';
+import type { Adapter, AutocompleteData, InteractionResponse } from '../types';
 import {
+	autocompleteResult,
+	bitFieldHasBit,
 	bulkUpdateCommands,
-	cachedCommandsAreEqual,
-	convertCommandToCachedCommand,
-	CryptoKey,
+	commandOptionMatches,
+	convertCommandOptionToAPIOption,
+	handleAutocomplete,
 	isValidCommand,
-	updateCommand,
-	webcrypto
+	updateCommand
 } from '../util';
+import type { ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
 
 interface MahojiOptions {
-	fastifyOptions?: FastifyServerOptions;
-	discordPublicKey: string;
 	discordToken: string;
 	developmentServerID: string;
-	discordBaseURL?: string;
 	applicationID: string;
-	interactionsEndpointURL?: string;
-	httpPort: number;
 	storeDirs?: string[];
 }
 
 export const defaultMahojiOptions = {
-	fastifyOptions: {},
 	discordPublicKey: '',
 	discordToken: '',
-	developmentServer: '',
-	discordBaseURL: 'https://discord.com/api/v9',
-	interactionsEndpointURL: '/'
+	developmentServer: ''
 } as const;
 
 export class MahojiClient {
-	server: FastifyInstance;
-	cryptoKey: Promise<CryptoKey>;
 	commands: Store<ICommand>;
 	token: string;
 	developmentServerID: string;
-	discordBaseURL: string;
 	applicationID: string;
-	interactionsEndpointURL: string;
-	httpPort: number;
 	storeDirs: string[];
+	restManager: REST;
+	adapters: Adapter[] = [];
 
 	constructor(options: MahojiOptions) {
-		this.cryptoKey = webcrypto.subtle.importKey(
-			'raw',
-			Buffer.from(options.discordPublicKey, 'hex'),
-			{ name: 'NODE-ED25519', namedCurve: 'NODE-ED25519', public: true },
-			false,
-			['verify']
-		);
 		this.token = options.discordToken;
-		this.discordBaseURL = options.discordBaseURL ?? defaultMahojiOptions.discordBaseURL;
 		this.developmentServerID = options.developmentServerID;
 		this.applicationID = options.applicationID;
-		this.interactionsEndpointURL = options.interactionsEndpointURL ?? defaultMahojiOptions.interactionsEndpointURL;
-		this.httpPort = options.httpPort;
+
 		this.storeDirs = [...(options.storeDirs ?? [process.cwd()]), join('node_modules', 'mahoji', 'dist')];
 		this.commands = new Store<ICommand>({ name: 'commands', dirs: this.storeDirs, checker: isValidCommand });
+		this.restManager = new REST({ version: '9' }).setToken(this.token);
+	}
 
-		this.server = fastify(mergeDefault(defaultMahojiOptions.fastifyOptions ?? {}, options.fastifyOptions));
+	async parseInteraction(interaction: APIInteraction): Promise<InteractionResponse | null> {
+		if (interaction.type === InteractionType.Ping) {
+			return { type: 1 };
+		}
 
-		this.server.register(fastifySensible, { errorHandler: false });
-		this.server.post(this.interactionsEndpointURL, async (req, res) => {
-			const result = await verifyDiscordCrypto({
-				request: req,
-				cryptoKey: await this.cryptoKey
-			});
+		// Only support guild interactions for now, so we're guaranteed to have a member.
+		if (!interaction.member) return null;
+		const { member } = interaction;
 
-			if (!result.isVerified) {
-				return res.badRequest();
-			}
+		if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
+			const { data } = interaction;
+			const options = (data as any).options as AutocompleteData[];
 
-			if (result.interaction.type === InteractionType.Ping) {
-				return res.send({ type: 1 });
-			}
-
-			if (result.interaction.type === InteractionType.ApplicationCommand) {
-				const interaction = result.interaction as APIChatInputApplicationCommandInteraction;
-				const apiOptions = (interaction.data.options ??
-					[]) as APIApplicationCommandInteractionDataOptionWithValues[];
-				const options: Record<string, APIApplicationCommandInteractionDataOptionWithValues['value']> = {};
-				const slashCommandInteraction = new SlashCommandInteraction(interaction);
-				for (const { name, value } of apiOptions) {
-					options[name] = value;
+			if (!data) return autocompleteResult([]);
+			const command = this.commands.pieces.get(data.name);
+			return {
+				type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+				data: {
+					choices: await handleAutocomplete(command, options, member)
 				}
-				const command = this.commands.pieces.get(interaction.data.name);
-				if (command) {
-					const response = await command.run({
-						interaction: slashCommandInteraction,
-						options: slashCommandInteraction.options,
-						client: this
-					});
-					const apiResponse: APIInteractionResponse =
-						typeof response === 'string'
-							? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
-							: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
-					return res.send(apiResponse);
-				}
-			}
+			};
+		}
 
-			return res.notFound();
-		});
+		if (interaction.type === InteractionType.ApplicationCommand) {
+			const slashCommandInteraction = new SlashCommandInteraction(
+				// TODO fix this
+				interaction as APIChatInputApplicationCommandInteraction
+			);
+
+			const command = this.commands.pieces.get(interaction.data.name);
+			if (command) {
+				// Permissions
+				if (command.requiredPermissions) {
+					if (!slashCommandInteraction.member) return null;
+					for (const perm of command.requiredPermissions) {
+						if (!bitFieldHasBit(slashCommandInteraction.member.permissions, PermissionFlagsBits[perm])) {
+							return {
+								data: {
+									content: "You don't have permission to use this command.",
+									flags: MessageFlags.Ephemeral
+								},
+								type: InteractionResponseType.ChannelMessageWithSource
+							};
+						}
+					}
+				}
+
+				const response = await command.run({
+					interaction: slashCommandInteraction,
+					options: slashCommandInteraction.options,
+					client: this,
+					member: slashCommandInteraction.member!
+				});
+				const apiResponse: InteractionResponseWithBufferAttachments =
+					typeof response === 'string'
+						? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
+						: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
+				return apiResponse;
+			}
+		}
+
+		return null;
 	}
 
 	async start() {
-		await this.cryptoKey;
 		await this.loadStores();
-		return this.server.listen(this.httpPort);
+		await Promise.all(this.adapters.map(adapter => adapter.init()));
 	}
 
 	async loadStores() {
 		await Promise.all([this.commands].map(store => store.load()));
-		if (process.env.NODE_ENV !== 'test') await this.updateCommands();
+		await this.updateCommands();
 	}
 
 	async updateCommands() {
-		console.log(`${this.commands.pieces.size} commands`);
+		const liveCommands = (await this.restManager.get(
+			Routes.applicationGuildCommands(this.applicationID, this.developmentServerID)
+		)) as APIApplicationCommand[];
 
-		const cacheFilePath = join(this.storeDirs[0], '.mahoji');
-
-		const hashStore = await fs.readFile(cacheFilePath).catch(() => null);
-		const oldCachedCommands = hashStore !== null ? (JSON.parse(hashStore.toString()) as CachedCommand[]) : null;
-
-		const commands = Array.from(this.commands.pieces.values());
-		const currentCachedCommands = commands.map(convertCommandToCachedCommand).sort();
+		const changedCommands: ICommand[] = [];
 
 		// Find commands that don't match their previous values
-		let differences: CachedCommand[] = [];
-		for (const currentCachedCommand of currentCachedCommands) {
-			const oldHash = oldCachedCommands?.find(t => t.name === currentCachedCommand.name);
-			if (oldHash && !cachedCommandsAreEqual(oldHash, currentCachedCommand)) {
-				console.log(`${oldHash?.name} ${currentCachedCommand.name} changed`);
-				differences.push(currentCachedCommand);
+		for (const currentCommand of this.commands.values) {
+			const liveCmd = liveCommands.find(c => c.name === currentCommand.name);
+			if (!liveCmd) {
+				changedCommands.push(currentCommand);
+				continue;
+			}
+			if (currentCommand.description !== liveCmd.description) {
+				changedCommands.push(currentCommand);
+				continue;
+			}
+			const currentOptions = currentCommand.options.map(convertCommandOptionToAPIOption);
+			const liveOptions = liveCmd.options;
+
+			for (let i = 0; i < currentOptions.length; i++) {
+				const liveOpt = liveOptions?.[i];
+
+				const match = liveOpt && commandOptionMatches(liveOpt, currentOptions[i]);
+				if (match && !match.matches) {
+					changedCommands.push(currentCommand);
+				}
 			}
 		}
 
-		// Cache the current commands to a file
-		await fs.writeFile(cacheFilePath, Buffer.from(JSON.stringify(currentCachedCommands, null, 4)));
-
 		// If more than 3 commands need to be updated, bulk update ALL of them.
 		// Otherwise, just individually update the changed command(s)
-		if (differences.length > 3) {
-			bulkUpdateCommands({ client: this, commands, isGlobal: false });
+		if (changedCommands.length > 3) {
+			bulkUpdateCommands({ client: this, commands: changedCommands, guildID: this.developmentServerID });
 		} else {
-			for (const changedCachedCommand of differences) {
-				const command = commands.find(c => c.name === changedCachedCommand.name);
-				if (command) {
-					updateCommand({ client: this, command, isGlobal: false });
-				}
-			}
+			changedCommands.map(command => updateCommand({ client: this, command, guildID: this.developmentServerID }));
 		}
 	}
 }

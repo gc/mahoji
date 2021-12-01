@@ -1,18 +1,26 @@
-import { isFunction } from '@sapphire/utilities';
 import crypto from 'crypto';
 import {
+	APIApplicationCommandAutocompleteResponse,
+	APIApplicationCommandOption,
+	APIApplicationCommandOptionChoice,
 	APIChatInputApplicationCommandInteraction,
 	APIChatInputApplicationCommandInteractionDataResolved,
 	APIInteractionDataResolvedChannel,
 	APIInteractionDataResolvedGuildMember,
+	APIInteractionGuildMember,
+	APIInteractionResponseCallbackData,
 	APIRole,
 	APIUser,
 	ApplicationCommandOptionType,
-	RESTPostAPIApplicationGuildCommandsJSONBody
+	InteractionResponseType,
+	RESTPostAPIApplicationGuildCommandsJSONBody,
+	Routes,
+	Snowflake
 } from 'discord-api-types/v9';
-import fetch from 'node-fetch';
+import FormData from 'form-data';
 
-import type { CachedCommand, CommandOptions, ICommand } from '../lib/types';
+import type { AutocompleteData, CommandOption, CommandOptions, InteractionResponse } from '../lib/types';
+import type { ICommand, InteractionResponseWithBufferAttachments } from './structures/ICommand';
 import type { MahojiClient } from './structures/Mahoji';
 
 export type CryptoKey = any;
@@ -32,7 +40,7 @@ export function isValidCommand(data: any): data is ICommand {
 	) {
 		return false;
 	}
-	if (!isFunction(data.run)) return false;
+	if (typeof data.run !== 'function') return false;
 	return true;
 }
 
@@ -41,89 +49,109 @@ export function isValidPiece(data: any) {
 	return true;
 }
 
-export function convertCommandToCachedCommand(c: ICommand): CachedCommand {
-	return {
-		options: JSON.stringify(c.options),
-		name: c.name,
-		description: c.description
-	};
+export function commandOptionMatches(
+	optionX: APIApplicationCommandOption,
+	optionY: APIApplicationCommandOption
+): { matches: true } | { matches: false; changedField: string } {
+	if (optionX.type !== optionY.type) return { matches: false, changedField: 'type' };
+	if (optionX.name !== optionY.name) return { matches: false, changedField: 'name' };
+	if (optionX.description !== optionY.description) return { matches: false, changedField: 'description' };
+	if ((optionX.required || false) !== (optionY.required || false))
+		return { matches: false, changedField: 'required' };
+	if ((optionX.autocomplete || false) !== (optionY.autocomplete || false))
+		return { matches: false, changedField: 'autocomplete' };
+	if (
+		(optionX.type === ApplicationCommandOptionType.Subcommand &&
+			optionY.type === ApplicationCommandOptionType.Subcommand) ||
+		(optionX.type === ApplicationCommandOptionType.SubcommandGroup &&
+			optionY.type === ApplicationCommandOptionType.SubcommandGroup)
+	) {
+		if (
+			optionX.options?.length !== optionY.options?.length &&
+			((optionX.options?.length ?? 0) > 0 || (optionY.options?.length ?? 0) > 0)
+		) {
+			return {
+				matches: false,
+				changedField: `length of options (${optionX.options?.length},${optionY.options?.length})`
+			};
+		}
+
+		const notMatchingResult = optionX.options
+			?.map((opt, index) => commandOptionMatches(opt, optionY.options![index]))
+			.find(res => !res.matches);
+		return notMatchingResult || { matches: true };
+	}
+
+	return { matches: true };
 }
 
-export function cachedCommandsAreEqual(previousC: CachedCommand, newC: CachedCommand) {
-	return (
-		newC.name === previousC.name && newC.description === previousC.description && newC.options === previousC.options
-	);
+export function convertCommandOptionToAPIOption(option: CommandOption): APIApplicationCommandOption {
+	switch (option.type) {
+		case ApplicationCommandOptionType.Number:
+		case ApplicationCommandOptionType.Integer:
+		case ApplicationCommandOptionType.String: {
+			return {
+				...option,
+				autocomplete: 'autocomplete' in option ?? undefined
+			};
+		}
+
+		default: {
+			return {
+				...option,
+				options:
+					'options' in option && option.options ? option.options.map(convertCommandOptionToAPIOption) : []
+			};
+		}
+	}
 }
 
 export function convertCommandToAPICommand(cmd: ICommand): RESTPostAPIApplicationGuildCommandsJSONBody {
 	return {
 		name: cmd.name,
 		description: cmd.description,
-		options: [...cmd.options]
+		options: cmd.options.map(convertCommandOptionToAPIOption)
 	};
 }
 
-function baseHeaders(client: MahojiClient) {
-	return {
-		Authorization: `Bot ${client.token}`,
-		'Content-Type': 'application/json'
-	};
-}
-
-function getCommandsEndpoint({ client, isGlobal }: { client: MahojiClient; isGlobal: boolean }) {
-	return isGlobal
-		? `${client.discordBaseURL}/applications/${client.applicationID}/${client.developmentServerID}/commands`
-		: `${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`;
-}
-
-/**
- * Submits ALL commands to the Discord API to be updated/synced, so they're all available to use.
- */
 export async function bulkUpdateCommands({
 	client,
 	commands,
-	isGlobal
+	guildID
 }: {
 	client: MahojiClient;
 	commands: ICommand[];
-	isGlobal: boolean;
+	guildID: Snowflake | null;
 }) {
 	const apiCommands = commands.map(convertCommandToAPICommand);
 
-	const result = await fetch(getCommandsEndpoint({ client, isGlobal }), {
-		method: 'PUT',
-		body: JSON.stringify(apiCommands),
-		headers: {
-			...baseHeaders(client)
-		}
-	});
+	const route =
+		guildID === null
+			? Routes.applicationCommands(client.applicationID)
+			: Routes.applicationGuildCommands(client.applicationID, guildID);
 
-	return result;
+	return client.restManager.put(route, {
+		body: apiCommands
+	});
 }
 
-/**
- * Submits a command to the Discord API to be updated/synced, so it's available to use.
- */
 export async function updateCommand({
 	client,
 	command,
-	isGlobal
+	guildID
 }: {
 	client: MahojiClient;
 	command: ICommand;
-	isGlobal: boolean;
+	guildID: Snowflake | null;
 }) {
 	const apiCommand = convertCommandToAPICommand(command);
-
-	const result = await fetch(getCommandsEndpoint({ client, isGlobal }), {
-		method: 'POST',
-		body: JSON.stringify(apiCommand),
-		headers: {
-			...baseHeaders(client)
-		}
+	const route =
+		guildID === null
+			? Routes.applicationCommands(client.applicationID)
+			: Routes.applicationGuildCommands(client.applicationID, guildID);
+	return client.restManager.post(route, {
+		body: apiCommand
 	});
-
-	return result;
 }
 
 export const enum Time {
@@ -149,10 +177,16 @@ export function convertAPIOptionsToCommandOptions(
 			opt.type === ApplicationCommandOptionType.SubcommandGroup ||
 			opt.type === ApplicationCommandOptionType.Subcommand
 		) {
-			for (const [key, value] of Object.entries(
-				convertAPIOptionsToCommandOptions(opt.options, resolvedObjects)
-			)) {
-				parsedOptions[key] = value;
+			for (const entry of opt.options ?? []) {
+				if (entry.type === ApplicationCommandOptionType.Subcommand) {
+					parsedOptions[entry.name] = convertAPIOptionsToCommandOptions(entry.options, resolvedObjects);
+				} else {
+					for (const [key, value] of Object.entries(
+						convertAPIOptionsToCommandOptions(opt.options, resolvedObjects)
+					)) {
+						parsedOptions[key] = value;
+					}
+				}
 			}
 		} else if (opt.type === ApplicationCommandOptionType.Channel) {
 			parsedOptions[opt.name] = resolvedObjects?.channels?.[opt.value] as APIInteractionDataResolvedChannel;
@@ -169,4 +203,72 @@ export function convertAPIOptionsToCommandOptions(
 	}
 
 	return parsedOptions;
+}
+
+export const autocompleteResult = (
+	options: APIApplicationCommandOptionChoice[]
+): APIApplicationCommandAutocompleteResponse => ({
+	type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+	data: {
+		choices: options
+	}
+});
+
+export async function handleAutocomplete(
+	command: ICommand | undefined,
+	autocompleteData: AutocompleteData[],
+	member: APIInteractionGuildMember
+): Promise<APIApplicationCommandOptionChoice[]> {
+	const value = autocompleteData[0]?.value;
+	if (!command || value === undefined) return [];
+	const optionBeingAutocompleted = command.options.find(o => o.name === autocompleteData[0].name);
+	if (
+		optionBeingAutocompleted &&
+		'autocomplete' in optionBeingAutocompleted &&
+		optionBeingAutocompleted.autocomplete !== undefined
+	) {
+		const autocompleteResult = await optionBeingAutocompleted.autocomplete(value as never, member);
+		return autocompleteResult;
+	}
+	return [];
+}
+
+export function bitFieldHasBit(bitfield: string, bit: bigint) {
+	return (BigInt(bitfield) & bit) === bit;
+}
+
+export function convertAttachments(data: InteractionResponseWithBufferAttachments): APIInteractionResponseCallbackData {
+	return {
+		...data,
+		attachments: data.data?.attachments?.map((at, index) => ({
+			id: index.toString(),
+			filename: at.fileName,
+			description: at.fileName
+		}))
+	};
+}
+
+export function handleFormData(response: InteractionResponse): InteractionResponse | FormData {
+	const attachments = response.data && 'attachments' in response.data && response.data.attachments;
+
+	if (
+		!attachments ||
+		!response.data ||
+		response.type === InteractionResponseType.ApplicationCommandAutocompleteResult
+	) {
+		return response;
+	}
+
+	const finalBody = new FormData();
+
+	// Parse attachments
+	if (attachments) {
+		for (let i = 0; i < attachments.length; i++) {
+			const attachment = attachments[i];
+			finalBody.append(`files[${i}]`, attachment.buffer, attachment.fileName);
+		}
+	}
+	finalBody.append('payload_json', JSON.stringify(convertAttachments(response)));
+
+	return finalBody;
 }

@@ -1,53 +1,33 @@
-import fetch from 'node-fetch';
-
-import { bulkUpdateCommands, updateCommand } from '../src/lib/util';
+/* eslint-disable @typescript-eslint/unbound-method */
+import { bulkUpdateCommands, convertCommandToAPICommand, updateCommand } from '../src/lib/util';
 import { mockClient, mockCommand } from './testUtil';
 
-jest.mock('node-fetch', () => jest.fn());
-const fetchFn = fetch as jest.MockedFunction<typeof fetch>;
-
 describe('discord api call tests', () => {
-	afterEach(() => fetchFn.mockReset());
 	test('bulk update commands', async () => {
 		const { client, close } = await mockClient();
 		try {
 			const commands = Array.from(client.commands.pieces.values());
-			await bulkUpdateCommands({ client, commands, isGlobal: false });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
-				`${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`,
+			await bulkUpdateCommands({ client, commands, guildID: client.developmentServerID });
+			expect(client.restManager.put).toHaveBeenCalledWith(
+				'/applications/661440240656842762/guilds/228822415189344257/commands',
 				{
-					method: 'PUT',
-					body: JSON.stringify(commands),
-					headers: {
-						Authorization: 'Bot FAKE_TOKEN',
-						'Content-Type': 'application/json'
-					}
+					body: commands.map(convertCommandToAPICommand)
 				}
 			);
-			expect(fetchFn).toHaveReturned();
 		} finally {
 			close();
 		}
 	});
+
 	test('bulk update commands globally', async () => {
 		const { client, close } = await mockClient();
+
 		try {
 			const commands = Array.from(client.commands.pieces.values());
-			await bulkUpdateCommands({ client, commands, isGlobal: true });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
-				`${client.discordBaseURL}/applications/${client.applicationID}/${client.developmentServerID}/commands`,
-				{
-					method: 'PUT',
-					body: JSON.stringify(commands),
-					headers: {
-						Authorization: 'Bot FAKE_TOKEN',
-						'Content-Type': 'application/json'
-					}
-				}
-			);
-			expect(fetchFn).toHaveReturned();
+			await bulkUpdateCommands({ client, commands, guildID: null });
+			expect(client.restManager.put).toHaveBeenCalledWith('/applications/661440240656842762/commands', {
+				body: commands.map(convertCommandToAPICommand)
+			});
 		} finally {
 			close();
 		}
@@ -56,41 +36,37 @@ describe('discord api call tests', () => {
 	test('single command update', async () => {
 		const { client, close } = await mockClient();
 		try {
-			await updateCommand({ client, command: mockCommand, isGlobal: false });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
-				`${client.discordBaseURL}/applications/${client.applicationID}/guilds/${client.developmentServerID}/commands`,
+			await updateCommand({ client, command: mockCommand, guildID: client.developmentServerID });
+			expect(client.restManager.post).toHaveBeenCalledWith(
+				'/applications/661440240656842762/guilds/228822415189344257/commands',
 				{
-					method: 'POST',
-					body: JSON.stringify(mockCommand),
-					headers: {
-						Authorization: 'Bot FAKE_TOKEN',
-						'Content-Type': 'application/json'
-					}
+					body: convertCommandToAPICommand(mockCommand)
 				}
 			);
-			expect(fetchFn).toHaveReturned();
 		} finally {
 			close();
 		}
 	});
-	test('single command update globally', async () => {
+
+	test('single command update global', async () => {
 		const { client, close } = await mockClient();
 		try {
-			await updateCommand({ client, command: mockCommand, isGlobal: true });
-			expect(fetchFn).toHaveBeenCalledTimes(1);
-			expect(fetchFn).toHaveBeenCalledWith(
-				`${client.discordBaseURL}/applications/${client.applicationID}/${client.developmentServerID}/commands`,
-				{
-					method: 'POST',
-					body: JSON.stringify(mockCommand),
-					headers: {
-						Authorization: 'Bot FAKE_TOKEN',
-						'Content-Type': 'application/json'
-					}
-				}
-			);
-			expect(fetchFn).toHaveReturned();
+			await updateCommand({ client, command: mockCommand, guildID: null });
+			expect(client.restManager.post).toHaveBeenCalledWith('/applications/661440240656842762/commands', {
+				body: convertCommandToAPICommand(mockCommand)
+			});
+		} finally {
+			close();
+		}
+	});
+
+	test('updating changed commands', async () => {
+		const { client, close } = await mockClient({ clientCommands: [] });
+		try {
+			await updateCommand({ client, command: mockCommand, guildID: null });
+			expect(client.restManager.post).toHaveBeenCalledWith('/applications/661440240656842762/commands', {
+				body: convertCommandToAPICommand(mockCommand)
+			});
 		} finally {
 			close();
 		}
