@@ -239,7 +239,7 @@ describe('server handles requests', () => {
 				options: [
 					{
 						name: 'command',
-						type: 1,
+						type: 3,
 						value: 'ping'
 					}
 				]
@@ -259,14 +259,14 @@ describe('server handles requests', () => {
 			data: {
 				id: mockSnowflake,
 				name: 'mahoji',
-				type: 1,
+				type: 3,
 				options: undefined
 			}
 		};
 
 		expect(await inject(commandInteraction2)).toStrictEqual({
 			data: {
-				content: 'Magnaboy, Pong!'
+				content: 'Invalid command.'
 			},
 			type: 4
 		});
@@ -277,7 +277,7 @@ describe('server handles requests', () => {
 			data: {
 				id: mockSnowflake,
 				name: 'mahoji',
-				type: 1,
+				type: 3,
 				options: [
 					{
 						name: 'command',
@@ -289,7 +289,7 @@ describe('server handles requests', () => {
 
 		expect(await inject(commandInteraction3)).toStrictEqual({
 			data: {
-				content: 'Magnaboy, Pong!'
+				content: 'Invalid command.'
 			},
 			type: 4
 		});

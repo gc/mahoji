@@ -29,7 +29,10 @@ export const command: ICommand = {
 		if (options.command === 'ping') {
 			return `${interaction.member?.user.username}, Pong!`;
 		}
-		await bulkUpdateCommands({ client, commands: client.commands.values, guildID: null });
-		return 'Updated all commands.';
+		if (options.command === 'globalsync') {
+			await bulkUpdateCommands({ client, commands: client.commands.values, guildID: null });
+			return 'Updated all commands.';
+		}
+		return 'Invalid command.';
 	}
 };
