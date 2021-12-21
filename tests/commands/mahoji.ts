@@ -1,8 +1,7 @@
 import { ApplicationCommandOptionType } from 'discord-api-types/v9';
 
-import type { ICommand } from '../lib/structures/ICommand';
-import type { CommandRunOptions } from '../lib/types';
-import { bulkUpdateCommands } from '../lib/util';
+import type { CommandRunOptions, ICommand } from '../../src';
+import { bulkUpdateCommands } from '../../src/lib/util';
 
 export const command: ICommand = {
 	name: 'mahoji',

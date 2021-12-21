@@ -138,6 +138,7 @@ export async function mockClient(options?: {
 	client.restManager.put = fn1;
 	const fn2 = jest.fn();
 	client.restManager.post = fn2;
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const fn3 = jest.fn(async (_fullRoute: RouteLike, _options?: RequestData) => {
 		return [convertCommandToAPICommand(mockCommand)];
 	});

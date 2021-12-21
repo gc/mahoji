@@ -26,7 +26,7 @@ jobs:
             - name: Install Dependencies
               run: yarn --frozen-lockfile
             - name: Run ESLint
-              uses: icrawl/action-eslint@v1
+              run: yarn test:lint
 
     Typescript:
         name: Typescript
@@ -47,6 +47,4 @@ jobs:
             - name: Install Dependencies
               run: yarn --frozen-lockfile
             - name: Run TSC
-              uses: icrawl/action-tsc@v1
-              with:
-                  build: src
+              run: yarn dev:build
