@@ -6,9 +6,9 @@
     "dev:build": "tsc -p src",
     "dev:lint": "eslint \"{src,tests}/**/*.ts\" --fix",
     "dev:watch": "tsc -w -p src",
-    "test": "yarn test:build && yarn test:unit && yarn test:lint",
+    "test": "yarn test:unit && yarn test:lint",
     "test:build": "tsc -p tests",
-    "test:unit": "jest --bail --runInBand --coverage --verbose",
+    "test:unit": "yarn test:build && jest --bail --runInBand --coverage --verbose",
     "test:watch": "yarn test:wipefolder && nodemon --config nodemon.json",
     "test:wipefolder": "rimraf \"compiledtests/\"",
     "test:lint": "eslint \"{src,tests}/**/*.ts\""
