@@ -109,7 +109,9 @@ export class MahojiClient {
 					interaction: slashCommandInteraction,
 					options: slashCommandInteraction.options,
 					client: this,
-					member: slashCommandInteraction.member!
+					member: slashCommandInteraction.member!,
+					channelID: slashCommandInteraction.channelID!,
+					guildID: slashCommandInteraction.guildID!
 				});
 				const apiResponse: InteractionResponseWithBufferAttachments =
 					typeof response === 'string'

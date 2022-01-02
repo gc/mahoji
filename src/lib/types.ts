@@ -69,6 +69,8 @@ export interface CommandRunOptions<T extends CommandOptions = {}> {
 	options: T;
 	client: MahojiClient;
 	member: APIInteractionGuildMember;
+	channelID: string;
+	guildID: string;
 }
 
 export interface Piece {
