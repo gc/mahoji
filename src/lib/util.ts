@@ -58,8 +58,12 @@ export function commandOptionMatches(
 	if (optionX.description !== optionY.description) return { matches: false, changedField: 'description' };
 	if ((optionX.required || false) !== (optionY.required || false))
 		return { matches: false, changedField: 'required' };
-	if ((optionX.autocomplete || false) !== (optionY.autocomplete || false))
+	if (
+		('autocomplete' in optionX ? optionX.autocomplete || false : false) !==
+		('autocomplete' in optionY ? optionY.autocomplete || false : false)
+	) {
 		return { matches: false, changedField: 'autocomplete' };
+	}
 	if (
 		(optionX.type === ApplicationCommandOptionType.Subcommand &&
 			optionY.type === ApplicationCommandOptionType.Subcommand) ||
@@ -99,6 +103,8 @@ export function convertCommandOptionToAPIOption(option: CommandOption): APIAppli
 		default: {
 			return {
 				...option,
+				// TODO(gc): How the fuck do I fix this
+				// @ts-ignore
 				options:
 					'options' in option && option.options ? option.options.map(convertCommandOptionToAPIOption) : []
 			};

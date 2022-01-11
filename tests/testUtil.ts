@@ -96,13 +96,14 @@ export const mockMember: APIInteractionGuildMember = {
 
 export const baseRequest = { method: 'POST', url: '/interactions' } as const;
 export const commandInteractionBase = {
-	id: '---',
-	application_id: '--',
+	id: 'commandInteractionBase',
+	application_id: 'commandInteractionBase',
 	type: InteractionType.ApplicationCommand,
 	channel_id: mockSnowflake,
 	version: 1,
 	token: '---',
-	member: mockMember
+	member: mockMember,
+	guild_id: '12345'
 } as const;
 
 export async function mockClient(options?: {

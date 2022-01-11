@@ -104,14 +104,14 @@ export class MahojiClient {
 						}
 					}
 				}
-
 				const response = await command.run({
 					interaction: slashCommandInteraction,
 					options: slashCommandInteraction.options,
 					client: this,
-					member: slashCommandInteraction.member!,
-					channelID: slashCommandInteraction.channelID!,
-					guildID: slashCommandInteraction.guildID!
+					member: slashCommandInteraction.member,
+					channelID: slashCommandInteraction.channelID,
+					guildID: slashCommandInteraction.guildID,
+					userID: slashCommandInteraction.userID
 				});
 				const apiResponse: InteractionResponseWithBufferAttachments =
 					typeof response === 'string'

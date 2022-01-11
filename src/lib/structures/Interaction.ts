@@ -7,20 +7,22 @@ export class Interaction<T extends APIInteraction> {
 	token: string;
 
 	message?: APIMessage;
-	channelID?: Snowflake;
-	guildID?: Snowflake;
-	member?: APIInteractionGuildMember;
-	user?: APIUser;
+	channelID!: bigint;
+	guildID!: bigint;
+	userID!: bigint;
+	member!: APIInteractionGuildMember;
+	user!: APIUser;
 
 	constructor(interaction: T) {
 		this.interaction = interaction;
 
 		this.id = interaction.id;
-		this.guildID = interaction.guild_id;
-		this.channelID = interaction.channel_id;
+		this.guildID = BigInt(interaction.guild_id!);
+		this.channelID = BigInt(interaction.channel_id!);
+		this.userID = BigInt(interaction.member!.user.id);
 		this.applicationID = interaction.application_id;
-		this.member = interaction.member;
-		this.user = interaction.user;
+		this.member = interaction.member!;
+		this.user = interaction.member!.user!;
 		this.token = interaction.token;
 		this.message = interaction.message;
 	}

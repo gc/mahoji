@@ -5,7 +5,8 @@
 		"@typescript-eslint/no-throw-literal": 0,
 		"@typescript-eslint/default-param-last": 0,
 		"@typescript-eslint/no-base-to-string": 0,
-		"@typescript-eslint/no-useless-constructor": 0
+		"@typescript-eslint/no-useless-constructor": 0,
+		"@typescript-eslint/ban-ts-comment": 0
 	},
 	 "parserOptions": {
 		"sourceType":"module",

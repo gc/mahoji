@@ -1,9 +1,4 @@
-import {
-	APIApplicationCommandInteraction,
-	APIChatInputApplicationCommandInteraction,
-	APIPingInteraction,
-	InteractionType
-} from 'discord-api-types/v9';
+import { APIChatInputApplicationCommandInteraction, APIPingInteraction, InteractionType } from 'discord-api-types/v9';
 
 import { Time } from '../src/lib/util';
 import { baseRequest, commandInteractionBase, mockClient, mockCommand, mockSnowflake } from './testUtil';
@@ -125,8 +120,7 @@ describe('server handles requests', () => {
 		const { inject, close, client } = await mockClient();
 
 		client.commands.pieces.set(mockCommand.name, mockCommand);
-
-		const commandInteraction: APIApplicationCommandInteraction = {
+		const commandInteraction: APIChatInputApplicationCommandInteraction = {
 			...commandInteractionBase,
 			data: {
 				id: mockSnowflake,
