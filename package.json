@@ -13,7 +13,6 @@
     "test:wipefolder": "rimraf \"compiledtests/\"",
     "test:lint": "eslint \"{src,tests}/**/*.ts\""
   },
-  "license": "MIT",
   "dependencies": {
     "@discordjs/rest": "^0.1.0-canary.0",
     "fastify": "^3.21.0",
