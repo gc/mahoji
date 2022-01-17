@@ -1,6 +1,6 @@
 {
   "name": "mahoji",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "main": "dist/index.js",
   "scripts": {
     "dev:build": "tsc -p src",
@@ -14,7 +14,7 @@
     "test:lint": "eslint \"{src,tests}/**/*.ts\""
   },
   "dependencies": {
-    "@discordjs/rest": "^0.1.0-canary.0",
+    "@discordjs/rest": "^0.2.0-canary.0",
     "fastify": "^3.21.0",
     "form-data": "^4.0.0",
     "node-fetch": "^2.6.3"
