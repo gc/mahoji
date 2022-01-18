@@ -1,3 +1,4 @@
+import type { APIApplicationCommandAutocompleteInteraction } from 'discord-api-types/payloads/v9/_interactions/autocomplete';
 import type {
 	APIApplicationCommandAutocompleteResponse,
 	APIApplicationCommandOptionChoice,
@@ -11,6 +12,7 @@ import type {
 
 import type { MahojiClient } from '..';
 import type { InteractionResponseWithBufferAttachments } from './structures/ICommand';
+import type { Interaction } from './structures/Interaction';
 import type { SlashCommandInteraction } from './structures/SlashCommandInteraction';
 
 export type { APIApplicationCommandOption, APIChatInputApplicationCommandInteraction } from 'discord-api-types/v9';
@@ -94,4 +96,16 @@ export interface AutocompleteData {
 	focused: boolean;
 }
 
-export type InteractionResponse = InteractionResponseWithBufferAttachments | APIApplicationCommandAutocompleteResponse;
+export type InteractionResponse =
+	| {
+			response: APIApplicationCommandAutocompleteResponse;
+			interaction: Interaction<APIApplicationCommandAutocompleteInteraction>;
+	  }
+	| {
+			response: InteractionResponseWithBufferAttachments;
+			interaction: SlashCommandInteraction;
+	  }
+	| {
+			response: { type: 1 };
+			interaction: null;
+	  };
