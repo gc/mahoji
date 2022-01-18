@@ -164,7 +164,7 @@ export class FastifyAdapter implements Adapter {
 				if (formData instanceof FormData) {
 					res.headers(formData.getHeaders()).send(formData);
 				} else {
-					res.send(formData);
+					res.send(formData.response);
 				}
 				return;
 			}

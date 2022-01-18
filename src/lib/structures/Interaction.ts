@@ -1,10 +1,13 @@
 import type { APIInteraction, APIInteractionGuildMember, APIMessage, APIUser, Snowflake } from 'discord-api-types/v9';
 
+import type { MahojiClient } from './Mahoji';
+
 export class Interaction<T extends APIInteraction> {
 	interaction: T;
 	id: Snowflake;
 	applicationID: Snowflake;
 	token: string;
+	client: MahojiClient;
 
 	message?: APIMessage;
 	channelID!: bigint;
@@ -13,7 +16,7 @@ export class Interaction<T extends APIInteraction> {
 	member!: APIInteractionGuildMember;
 	user!: APIUser;
 
-	constructor(interaction: T) {
+	constructor(interaction: T, client: MahojiClient) {
 		this.interaction = interaction;
 
 		this.id = interaction.id;
@@ -25,5 +28,6 @@ export class Interaction<T extends APIInteraction> {
 		this.user = interaction.member!.user!;
 		this.token = interaction.token;
 		this.message = interaction.message;
+		this.client = client;
 	}
 }

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
+import type { APIApplicationCommandAutocompleteInteraction } from 'discord-api-types/payloads/v9/_interactions/autocomplete';
 import {
-	APIApplicationCommandAutocompleteResponse,
 	APIApplicationCommandOption,
 	APIApplicationCommandOptionChoice,
 	APIChatInputApplicationCommandInteraction,
@@ -21,6 +21,7 @@ import FormData from 'form-data';
 
 import type { AutocompleteData, CommandOption, CommandOptions, InteractionResponse } from '../lib/types';
 import type { ICommand, InteractionResponseWithBufferAttachments } from './structures/ICommand';
+import { Interaction } from './structures/Interaction';
 import type { MahojiClient } from './structures/Mahoji';
 
 export type CryptoKey = any;
@@ -212,12 +213,17 @@ export function convertAPIOptionsToCommandOptions(
 }
 
 export const autocompleteResult = (
+	interaction: APIApplicationCommandAutocompleteInteraction,
+	client: MahojiClient,
 	options: APIApplicationCommandOptionChoice[]
-): APIApplicationCommandAutocompleteResponse => ({
-	type: InteractionResponseType.ApplicationCommandAutocompleteResult,
-	data: {
-		choices: options
-	}
+): InteractionResponse => ({
+	response: {
+		type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+		data: {
+			choices: options
+		}
+	},
+	interaction: new Interaction<APIApplicationCommandAutocompleteInteraction>(interaction, client)
 });
 
 export async function handleAutocomplete(
@@ -255,15 +261,15 @@ export function convertAttachments(data: InteractionResponseWithBufferAttachment
 }
 
 export function handleFormData(response: InteractionResponse): InteractionResponse | FormData {
-	const attachments = response.data && 'attachments' in response.data && response.data.attachments;
-
 	if (
-		!attachments ||
-		!response.data ||
-		response.type === InteractionResponseType.ApplicationCommandAutocompleteResult
+		response.response.type === InteractionResponseType.ApplicationCommandAutocompleteResult ||
+		response.response.type === InteractionResponseType.Pong
 	) {
 		return response;
 	}
+	const attachments =
+		response.response.data && 'attachments' in response.response.data && response.response.data.attachments;
+	if (!attachments) return response;
 
 	const finalBody = new FormData();
 
@@ -274,7 +280,7 @@ export function handleFormData(response: InteractionResponse): InteractionRespon
 			finalBody.append(`files[${i}]`, attachment.buffer, attachment.fileName);
 		}
 	}
-	finalBody.append('payload_json', JSON.stringify(convertAttachments(response)));
+	finalBody.append('payload_json', JSON.stringify(convertAttachments(response.response)));
 
 	return finalBody;
 }

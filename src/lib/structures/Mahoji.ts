@@ -23,6 +23,7 @@ import {
 	updateCommand
 } from '../util';
 import type { ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
+import { Interaction } from './Interaction';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
 
@@ -60,7 +61,7 @@ export class MahojiClient {
 
 	async parseInteraction(interaction: APIInteraction): Promise<InteractionResponse | null> {
 		if (interaction.type === InteractionType.Ping) {
-			return { type: 1 };
+			return { response: { type: 1 }, interaction: null };
 		}
 
 		// Only support guild interactions for now, so we're guaranteed to have a member.
@@ -71,20 +72,24 @@ export class MahojiClient {
 			const { data } = interaction;
 			const options = (data as any).options as AutocompleteData[];
 
-			if (!data) return autocompleteResult([]);
+			if (!data) return autocompleteResult(interaction, this, []);
 			const command = this.commands.pieces.get(data.name);
 			return {
-				type: InteractionResponseType.ApplicationCommandAutocompleteResult,
-				data: {
-					choices: await handleAutocomplete(command, options, member)
-				}
+				response: {
+					type: InteractionResponseType.ApplicationCommandAutocompleteResult,
+					data: {
+						choices: await handleAutocomplete(command, options, member)
+					}
+				},
+				interaction: new Interaction(interaction, this)
 			};
 		}
 
 		if (interaction.type === InteractionType.ApplicationCommand) {
 			const slashCommandInteraction = new SlashCommandInteraction(
 				// TODO fix this
-				interaction as APIChatInputApplicationCommandInteraction
+				interaction as APIChatInputApplicationCommandInteraction,
+				this
 			);
 
 			const command = this.commands.pieces.get(interaction.data.name);
@@ -95,11 +100,14 @@ export class MahojiClient {
 					for (const perm of command.requiredPermissions) {
 						if (!bitFieldHasBit(slashCommandInteraction.member.permissions, PermissionFlagsBits[perm])) {
 							return {
-								data: {
-									content: "You don't have permission to use this command.",
-									flags: MessageFlags.Ephemeral
+								response: {
+									data: {
+										content: "You don't have permission to use this command.",
+										flags: MessageFlags.Ephemeral
+									},
+									type: InteractionResponseType.ChannelMessageWithSource
 								},
-								type: InteractionResponseType.ChannelMessageWithSource
+								interaction: slashCommandInteraction
 							};
 						}
 					}
@@ -117,7 +125,7 @@ export class MahojiClient {
 					typeof response === 'string'
 						? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
 						: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
-				return apiResponse;
+				return { response: apiResponse, interaction: slashCommandInteraction };
 			}
 		}
 
