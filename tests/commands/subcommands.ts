@@ -65,9 +65,7 @@ export const modActionsCommand: ICommand = {
 			]
 		}
 	],
-	run: async ({ interaction, options }: CommandRunOptions<{ name?: string; quantity?: number }>) => {
-		return `${options.name ? options.name : interaction.member!.user.username}, Pong!`.repeat(
-			options.quantity ?? 1
-		);
+	run: async ({ member, options }: CommandRunOptions<{ name?: string; quantity?: number }>) => {
+		return `${options.name ? options.name : member.user.username}, Pong!`.repeat(options.quantity ?? 1);
 	}
 };

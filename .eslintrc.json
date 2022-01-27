@@ -6,7 +6,8 @@
 		"@typescript-eslint/default-param-last": 0,
 		"@typescript-eslint/no-base-to-string": 0,
 		"@typescript-eslint/no-useless-constructor": 0,
-		"@typescript-eslint/ban-ts-comment": 0
+		"@typescript-eslint/ban-ts-comment": 0,
+		"@typescript-eslint/no-non-null-assertion": "error"
 	},
 	 "parserOptions": {
 		"sourceType":"module",
