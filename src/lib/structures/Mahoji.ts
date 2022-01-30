@@ -52,7 +52,6 @@ export interface Handlers {
 		interaction: SlashCommandInteraction;
 		error: Error | null;
 		response: InteractionResponseWithBufferAttachments | null;
-		inhibited: boolean;
 	}) => Promise<string | undefined>;
 }
 
@@ -180,8 +179,7 @@ export class MahojiClient {
 				command: slashCommandInteraction.command,
 				interaction: slashCommandInteraction,
 				error,
-				response: apiResponse,
-				inhibited: inhibitedResponse !== undefined
+				response: apiResponse
 			});
 
 			if (error) return { error, interaction: slashCommandInteraction, type: InteractionType.ApplicationCommand };
