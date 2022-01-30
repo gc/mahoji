@@ -13,6 +13,7 @@ import {
 	APIUser,
 	ApplicationCommandOptionType,
 	InteractionResponseType,
+	InteractionType,
 	RESTPostAPIApplicationGuildCommandsJSONBody,
 	Routes,
 	Snowflake
@@ -82,7 +83,9 @@ export function commandOptionMatches(
 		}
 
 		const notMatchingResult = optionX.options
-			?.map((opt, index) => commandOptionMatches(opt, optionY.options![index]))
+			?.map((opt, index) =>
+				commandOptionMatches(opt, optionY.options === undefined ? opt : optionY.options[index])
+			)
 			.find(res => !res.matches);
 		return notMatchingResult || { matches: true };
 	}
@@ -223,7 +226,8 @@ export const autocompleteResult = (
 			choices: options
 		}
 	},
-	interaction: new Interaction<APIApplicationCommandAutocompleteInteraction>(interaction, client)
+	interaction: new Interaction(interaction, client),
+	type: InteractionType.ApplicationCommandAutocomplete
 });
 
 export async function handleAutocomplete(
@@ -284,3 +288,10 @@ export function handleFormData(response: InteractionResponse): InteractionRespon
 
 	return finalBody;
 }
+
+export const ERROR_RESPONSE: InteractionResponseWithBufferAttachments = {
+	data: {
+		content: 'There was an error running this command.'
+	},
+	type: InteractionResponseType.ChannelMessageWithSource
+};

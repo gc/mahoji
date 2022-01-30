@@ -11,7 +11,7 @@ import {
 } from 'discord-api-types/v9';
 import { join } from 'path';
 
-import type { Adapter, AutocompleteData, InteractionResponse } from '../types';
+import type { Adapter, AutocompleteData, InteractionErrorResponse, InteractionResponse } from '../types';
 import {
 	autocompleteResult,
 	bitFieldHasBit,
@@ -22,7 +22,11 @@ import {
 	isValidCommand,
 	updateCommand
 } from '../util';
-import type { ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
+import type {
+	ICommand,
+	InteractionResponseDataWithBufferAttachments,
+	InteractionResponseWithBufferAttachments
+} from './ICommand';
 import { Interaction } from './Interaction';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
@@ -32,6 +36,7 @@ interface MahojiOptions {
 	developmentServerID: string;
 	applicationID: string;
 	storeDirs?: string[];
+	handlers?: Handlers;
 }
 
 export const defaultMahojiOptions = {
@@ -39,6 +44,16 @@ export const defaultMahojiOptions = {
 	discordToken: '',
 	developmentServer: ''
 } as const;
+
+export interface Handlers {
+	preCommand?: (options: { command: ICommand; interaction: SlashCommandInteraction }) => Promise<string | undefined>;
+	postCommand?: (options: {
+		command: ICommand;
+		interaction: SlashCommandInteraction;
+		error: Error | null;
+		response: InteractionResponseWithBufferAttachments | null;
+	}) => Promise<string | undefined>;
+}
 
 export class MahojiClient {
 	commands: Store<ICommand>;
@@ -48,6 +63,7 @@ export class MahojiClient {
 	storeDirs: string[];
 	restManager: REST;
 	adapters: Adapter[] = [];
+	handlers: Handlers;
 
 	constructor(options: MahojiOptions) {
 		this.token = options.discordToken;
@@ -57,11 +73,14 @@ export class MahojiClient {
 		this.storeDirs = [...(options.storeDirs ?? [process.cwd()]), join('node_modules', 'mahoji', 'dist')];
 		this.commands = new Store<ICommand>({ name: 'commands', dirs: this.storeDirs, checker: isValidCommand });
 		this.restManager = new REST({ version: '9' }).setToken(this.token);
+		this.handlers = options.handlers ?? {};
 	}
 
-	async parseInteraction(interaction: APIInteraction): Promise<InteractionResponse | null> {
+	async parseInteraction(
+		interaction: APIInteraction
+	): Promise<InteractionResponse | InteractionErrorResponse | null> {
 		if (interaction.type === InteractionType.Ping) {
-			return { response: { type: 1 }, interaction: null };
+			return { response: { type: 1 }, interaction: null, type: InteractionType.Ping };
 		}
 
 		// Only support guild interactions for now, so we're guaranteed to have a member.
@@ -81,38 +100,61 @@ export class MahojiClient {
 						choices: await handleAutocomplete(command, options, member)
 					}
 				},
-				interaction: new Interaction(interaction, this)
+				interaction: new Interaction(interaction, this),
+				type: InteractionType.ApplicationCommandAutocomplete
 			};
 		}
 
 		if (interaction.type === InteractionType.ApplicationCommand) {
+			const command = this.commands.pieces.get(interaction.data.name);
+			if (!command) return null;
 			const slashCommandInteraction = new SlashCommandInteraction(
-				// TODO fix this
 				interaction as APIChatInputApplicationCommandInteraction,
 				this
 			);
 
-			const command = this.commands.pieces.get(interaction.data.name);
-			if (command) {
-				// Permissions
-				if (command.requiredPermissions) {
-					if (!slashCommandInteraction.member) return null;
-					for (const perm of command.requiredPermissions) {
-						if (!bitFieldHasBit(slashCommandInteraction.member.permissions, PermissionFlagsBits[perm])) {
-							return {
-								response: {
-									data: {
-										content: "You don't have permission to use this command.",
-										flags: MessageFlags.Ephemeral
-									},
-									type: InteractionResponseType.ChannelMessageWithSource
+			// Permissions
+			if (slashCommandInteraction.command.requiredPermissions) {
+				if (!slashCommandInteraction.member) return null;
+				for (const perm of slashCommandInteraction.command.requiredPermissions) {
+					if (!bitFieldHasBit(slashCommandInteraction.member.permissions, PermissionFlagsBits[perm])) {
+						return {
+							response: {
+								data: {
+									content: "You don't have permission to use this command.",
+									flags: MessageFlags.Ephemeral
 								},
-								interaction: slashCommandInteraction
-							};
-						}
+								type: InteractionResponseType.ChannelMessageWithSource
+							},
+							interaction: slashCommandInteraction,
+							type: InteractionType.ApplicationCommand
+						};
 					}
 				}
-				const response = await command.run({
+			}
+
+			const inhibitedResponse = await this.handlers.preCommand?.({
+				command: slashCommandInteraction.command,
+				interaction: slashCommandInteraction
+			});
+			if (inhibitedResponse) {
+				return {
+					response: {
+						data: {
+							content: inhibitedResponse,
+							flags: MessageFlags.Ephemeral
+						},
+						type: InteractionResponseType.ChannelMessageWithSource
+					},
+					interaction: slashCommandInteraction,
+					type: InteractionType.ApplicationCommand
+				};
+			}
+
+			let error: Error | null = null;
+			let response: string | InteractionResponseDataWithBufferAttachments | null = null;
+			try {
+				response = await slashCommandInteraction.command.run({
 					interaction: slashCommandInteraction,
 					options: slashCommandInteraction.options,
 					client: this,
@@ -121,12 +163,33 @@ export class MahojiClient {
 					guildID: slashCommandInteraction.guildID,
 					userID: slashCommandInteraction.userID
 				});
-				const apiResponse: InteractionResponseWithBufferAttachments =
-					typeof response === 'string'
-						? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
-						: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
-				return { response: apiResponse, interaction: slashCommandInteraction };
+			} catch (err: unknown) {
+				if (!(err instanceof Error)) console.error('Received an error that isnt an Error.');
+				error = err as Error;
 			}
+
+			const apiResponse: InteractionResponseWithBufferAttachments | null =
+				response === null
+					? slashCommandInteraction.data.response?.response ?? null
+					: typeof response === 'string'
+					? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
+					: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
+
+			await this.handlers.postCommand?.({
+				command: slashCommandInteraction.command,
+				interaction: slashCommandInteraction,
+				error,
+				response: apiResponse
+			});
+
+			if (error) return { error, interaction: slashCommandInteraction, type: InteractionType.ApplicationCommand };
+			if (!apiResponse) return null;
+
+			return {
+				response: apiResponse,
+				interaction: slashCommandInteraction,
+				type: InteractionType.ApplicationCommand
+			};
 		}
 
 		return null;

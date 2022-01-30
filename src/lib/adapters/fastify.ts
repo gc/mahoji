@@ -4,7 +4,7 @@ import FormData from 'form-data';
 
 import type { MahojiClient } from '../..';
 import type { Adapter } from '../types';
-import { CryptoKey, handleFormData, webcrypto } from '../util';
+import { CryptoKey, ERROR_RESPONSE, handleFormData, webcrypto } from '../util';
 
 interface Response {
 	message: string;
@@ -160,6 +160,9 @@ export class FastifyAdapter implements Adapter {
 
 			const response = await this.client.parseInteraction(result.interaction);
 			if (response) {
+				if ('error' in response) {
+					return res.send(ERROR_RESPONSE);
+				}
 				const formData = handleFormData(response);
 				if (formData instanceof FormData) {
 					res.headers(formData.getHeaders()).send(formData);

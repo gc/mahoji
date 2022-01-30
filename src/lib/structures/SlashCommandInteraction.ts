@@ -1,20 +1,34 @@
-import { InteractionResponseType, MessageFlags } from 'discord-api-types/payloads/v9';
+import { InteractionResponseType, InteractionType, MessageFlags } from 'discord-api-types/payloads/v9';
 import { Routes } from 'discord-api-types/rest/v9';
 
-import type { APIChatInputApplicationCommandInteraction, CommandOptions } from '../types';
+import type {
+	APIChatInputApplicationCommandInteraction,
+	CommandOptions,
+	ISlashCommandData,
+	SlashCommandResponse
+} from '../types';
 import { convertAPIOptionsToCommandOptions } from '../util';
+import type { ICommand } from './ICommand';
 import { Interaction } from './Interaction';
 import type { MahojiClient } from './Mahoji';
 
-export class SlashCommandInteraction extends Interaction<APIChatInputApplicationCommandInteraction> {
+export class SlashCommandInteraction extends Interaction {
 	options: CommandOptions;
+	command: ICommand;
 
 	deferred = false;
+	type: InteractionType.ApplicationCommand = InteractionType.ApplicationCommand;
+	declare data: ISlashCommandData;
 
 	constructor(interaction: APIChatInputApplicationCommandInteraction, client: MahojiClient) {
 		super(interaction, client);
 
 		this.options = convertAPIOptionsToCommandOptions(interaction.data.options, interaction.data.resolved);
+		const command = client.commands.pieces.get(interaction.data.name);
+		if (!command) {
+			throw new Error(`'${interaction.data.name}' command does not exist.`);
+		}
+		this.command = command;
 	}
 
 	async deferReply(options?: { ephemeral?: boolean }) {
@@ -27,5 +41,26 @@ export class SlashCommandInteraction extends Interaction<APIChatInputApplication
 				}
 			}
 		});
+	}
+
+	async respond({ response }: SlashCommandResponse) {
+		// If this response is for a deferred interaction, we have to use a different route/method/body.
+		if (this.deferred) {
+			await this.client.restManager.patch(
+				Routes.webhookMessage(this.client.applicationID, this.data.interaction.token),
+				{
+					body: { ...response.data, attachments: undefined },
+					attachments:
+						response.data && 'attachments' in response.data
+							? response.data.attachments?.map(a => ({
+									fileName: a.fileName,
+									rawBuffer: a.buffer
+							  }))
+							: undefined
+				}
+			);
+			return;
+		}
+		super.respond({ response, interaction: this, type: InteractionType.ApplicationCommand });
 	}
 }

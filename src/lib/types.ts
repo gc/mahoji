@@ -1,13 +1,20 @@
 import type { APIApplicationCommandAutocompleteInteraction } from 'discord-api-types/payloads/v9/_interactions/autocomplete';
 import type {
 	APIApplicationCommandAutocompleteResponse,
+	APIApplicationCommandInteraction,
 	APIApplicationCommandOptionChoice,
+	APIChatInputApplicationCommandInteraction,
 	APIInteractionDataResolvedChannel,
 	APIInteractionDataResolvedGuildMember,
 	APIInteractionGuildMember,
+	APIInteractionResponsePong,
+	APIMessage,
+	APIPingInteraction,
 	APIRole,
 	APIUser,
-	ApplicationCommandOptionType
+	ApplicationCommandOptionType,
+	InteractionType,
+	Snowflake
 } from 'discord-api-types/v9';
 
 import type { MahojiClient } from '..';
@@ -96,16 +103,78 @@ export interface AutocompleteData {
 	focused: boolean;
 }
 
-export type InteractionResponse =
+interface BaseInteractionResponse {
+	type: InteractionType;
+	interaction: SlashCommandInteraction | Interaction | null;
+	response:
+		| InteractionResponseWithBufferAttachments
+		| APIApplicationCommandAutocompleteResponse
+		| APIInteractionResponsePong;
+}
+
+export interface SlashCommandResponse extends BaseInteractionResponse {
+	response: InteractionResponseWithBufferAttachments;
+	interaction: SlashCommandInteraction;
+	type: APIChatInputApplicationCommandInteraction['type'];
+}
+
+export interface SlashCommandAutocompleteResponse extends BaseInteractionResponse {
+	response: APIApplicationCommandAutocompleteResponse;
+	interaction: Interaction;
+	type: APIApplicationCommandAutocompleteInteraction['type'];
+}
+
+export interface PongResponse extends BaseInteractionResponse {
+	response: APIInteractionResponsePong;
+	interaction: null;
+	type: APIPingInteraction['type'];
+}
+
+export interface ISlashCommandData {
+	type: APIChatInputApplicationCommandInteraction['type'];
+	interaction: APIApplicationCommandInteraction;
+	response: SlashCommandResponse | null;
+}
+
+interface IAutocompleteData {
+	type: APIApplicationCommandAutocompleteInteraction['type'];
+	interaction: APIApplicationCommandAutocompleteInteraction;
+	response: SlashCommandAutocompleteResponse | null;
+}
+interface IPingData {
+	type: APIPingInteraction['type'];
+	interaction: APIPingInteraction;
+	response: PongResponse | null;
+}
+
+export interface IInteraction {
+	id: Snowflake;
+	applicationID: Snowflake;
+	token: string;
+	client: MahojiClient;
+	message?: APIMessage;
+	channelID: bigint;
+	guildID: bigint;
+	userID: bigint;
+	member: APIInteractionGuildMember;
+	user: APIUser;
+	data: ISlashCommandData | IAutocompleteData | IPingData;
+}
+
+export type InteractionResponse = NonNullable<IInteraction['data']['response']>;
+
+export type InteractionErrorResponse = {
+	error: Error;
+} & (
 	| {
-			response: APIApplicationCommandAutocompleteResponse;
-			interaction: Interaction<APIApplicationCommandAutocompleteInteraction>;
-	  }
-	| {
-			response: InteractionResponseWithBufferAttachments;
 			interaction: SlashCommandInteraction;
+			type: InteractionType.ApplicationCommand;
 	  }
 	| {
-			response: { type: 1 };
-			interaction: null;
-	  };
+			interaction: Interaction;
+			type:
+				| InteractionType.ApplicationCommandAutocomplete
+				| InteractionType.MessageComponent
+				| InteractionType.Ping;
+	  }
+);
