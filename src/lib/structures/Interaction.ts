@@ -64,7 +64,6 @@ export class Interaction implements IInteraction {
 				})) as any;
 			}
 
-			console.log(result.response);
 			await this.client.restManager.post(route, {
 				body: {
 					...result.response
