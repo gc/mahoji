@@ -58,6 +58,7 @@ export class Interaction implements IInteraction {
 					  }))
 					: undefined;
 			delete result.response.data?.attachments;
+			console.log(result.response);
 			await this.client.restManager.post(route, {
 				body: {
 					...result.response
