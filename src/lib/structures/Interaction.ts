@@ -48,17 +48,26 @@ export class Interaction implements IInteraction {
 	}
 
 	async respond(result: InteractionResponse): Promise<void> {
-		const route = Routes.interactionCallback(this.data.interaction.id, this.data.interaction.token);
+		let route: any = Routes.interactionCallback(this.data.interaction.id, this.data.interaction.token);
 		if (result.type === InteractionType.ApplicationCommand) {
+			route = Routes.webhook(
+				'939970465269678150',
+				'ZIifqqedfUf08hJp0P6wE4Sa-wGVEbXRFrWq04QD3ChBqUc5-KFBT1cwALb6c5RPU8pW'
+			);
+			const t: any = JSON.parse(JSON.stringify(result.response));
+			delete t.data.attachments;
+			const files =
+				result.response.data && 'attachments' in result.response.data
+					? result.response.data.attachments?.map(a => ({
+							fileName: a.fileName,
+							fileData: a.buffer
+					  }))
+					: undefined;
 			await this.client.restManager.post(route, {
-				body: { ...result.response, attachments: undefined },
-				attachments:
-					result.response.data && 'attachments' in result.response.data
-						? result.response.data.attachments?.map(a => ({
-								fileName: a.fileName,
-								rawBuffer: a.buffer
-						  }))
-						: undefined
+				body: {
+					content: 'test'
+				},
+				files
 			});
 			return;
 		}
