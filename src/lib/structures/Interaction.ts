@@ -57,7 +57,13 @@ export class Interaction implements IInteraction {
 							fileData: a.buffer
 					  }))
 					: undefined;
-			delete result.response.data?.attachments;
+			if (result.response.data?.attachments) {
+				result.response.data.attachments = result.response.data?.attachments?.map((i, ind) => ({
+					filename: i.fileName,
+					id: ind
+				})) as any;
+			}
+
 			console.log(result.response);
 			await this.client.restManager.post(route, {
 				body: {
