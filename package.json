@@ -14,7 +14,7 @@
     "test:lint": "eslint \"{src,tests}/**/*.ts\""
   },
   "dependencies": {
-    "@discordjs/rest": "^0.2.0-canary.0",
+    "@discordjs/rest": "^0.3.0",
     "fastify": "^3.21.0",
     "form-data": "^4.0.0",
     "node-fetch": "^2.6.3"

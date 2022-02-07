@@ -50,15 +50,25 @@ export class Interaction implements IInteraction {
 	async respond(result: InteractionResponse): Promise<void> {
 		const route = Routes.interactionCallback(this.data.interaction.id, this.data.interaction.token);
 		if (result.type === InteractionType.ApplicationCommand) {
+			const files =
+				result.response.data && 'attachments' in result.response.data
+					? result.response.data.attachments?.map(a => ({
+							fileName: a.fileName,
+							fileData: a.buffer
+					  }))
+					: undefined;
+			if (result.response.data?.attachments) {
+				result.response.data.attachments = result.response.data?.attachments?.map((i, ind) => ({
+					filename: i.fileName,
+					id: ind
+				})) as any;
+			}
+
 			await this.client.restManager.post(route, {
-				body: { ...result.response, attachments: undefined },
-				attachments:
-					result.response.data && 'attachments' in result.response.data
-						? result.response.data.attachments?.map(a => ({
-								fileName: a.fileName,
-								rawBuffer: a.buffer
-						  }))
-						: undefined
+				body: {
+					...result.response
+				},
+				files
 			});
 			return;
 		}

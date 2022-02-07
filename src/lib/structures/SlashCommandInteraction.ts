@@ -50,11 +50,11 @@ export class SlashCommandInteraction extends Interaction {
 				Routes.webhookMessage(this.client.applicationID, this.data.interaction.token),
 				{
 					body: { ...response.data, attachments: undefined },
-					attachments:
+					files:
 						response.data && 'attachments' in response.data
 							? response.data.attachments?.map(a => ({
 									fileName: a.fileName,
-									rawBuffer: a.buffer
+									fileData: a.buffer
 							  }))
 							: undefined
 				}
