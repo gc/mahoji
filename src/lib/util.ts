@@ -187,17 +187,13 @@ export function convertAPIOptionsToCommandOptions(
 			opt.type === ApplicationCommandOptionType.SubcommandGroup ||
 			opt.type === ApplicationCommandOptionType.Subcommand
 		) {
-			for (const entry of opt.options ?? []) {
-				if (entry.type === ApplicationCommandOptionType.Subcommand) {
-					parsedOptions[entry.name] = convertAPIOptionsToCommandOptions(entry.options, resolvedObjects);
-				} else {
-					for (const [key, value] of Object.entries(
-						convertAPIOptionsToCommandOptions(opt.options, resolvedObjects)
-					)) {
-						parsedOptions[key] = value;
-					}
-				}
+			let opts: CommandOptions = {};
+			for (const [key, value] of Object.entries(
+				convertAPIOptionsToCommandOptions(opt.options ?? [], resolvedObjects)
+			)) {
+				opts[key] = value;
 			}
+			parsedOptions[opt.name] = opts;
 		} else if (opt.type === ApplicationCommandOptionType.Channel) {
 			parsedOptions[opt.name] = resolvedObjects?.channels?.[opt.value] as APIInteractionDataResolvedChannel;
 		} else if (opt.type === ApplicationCommandOptionType.Role) {
