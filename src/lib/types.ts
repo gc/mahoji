@@ -96,13 +96,6 @@ export interface Adapter {
 	init: () => Promise<unknown>;
 }
 
-export interface AutocompleteData {
-	type: number;
-	name: string;
-	value: string | number;
-	focused: boolean;
-}
-
 interface BaseInteractionResponse {
 	type: InteractionType;
 	interaction: SlashCommandInteraction | Interaction | null;

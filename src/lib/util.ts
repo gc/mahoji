@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import type { APIApplicationCommandAutocompleteInteraction } from 'discord-api-types/payloads/v9/_interactions/autocomplete';
 import {
+	APIApplicationCommandInteractionDataOption,
 	APIApplicationCommandOption,
 	APIApplicationCommandOptionChoice,
 	APIChatInputApplicationCommandInteraction,
@@ -20,7 +21,7 @@ import {
 } from 'discord-api-types/v9';
 import FormData from 'form-data';
 
-import type { AutocompleteData, CommandOption, CommandOptions, InteractionResponse } from '../lib/types';
+import type { CommandOption, CommandOptions, InteractionResponse } from '../lib/types';
 import type { ICommand, InteractionResponseWithBufferAttachments } from './structures/ICommand';
 import { Interaction } from './structures/Interaction';
 import type { MahojiClient } from './structures/Mahoji';
@@ -228,19 +229,34 @@ export const autocompleteResult = (
 
 export async function handleAutocomplete(
 	command: ICommand | undefined,
-	autocompleteData: AutocompleteData[],
-	member: APIInteractionGuildMember
+	autocompleteData: APIApplicationCommandInteractionDataOption[] | undefined,
+	member: APIInteractionGuildMember,
+	option?: CommandOption
 ): Promise<APIApplicationCommandOptionChoice[]> {
-	const value = autocompleteData[0]?.value;
-	if (!command || value === undefined) return [];
-	const optionBeingAutocompleted = command.options.find(o => o.name === autocompleteData[0].name);
+	if (!command || !autocompleteData) return [];
+	const data = autocompleteData[0];
+
+	if (
+		data.type === ApplicationCommandOptionType.SubcommandGroup ||
+		data.type === ApplicationCommandOptionType.Subcommand
+	) {
+		if (!data.options || !data.options[0]) return [];
+		const subCommand = command.options.find(c => c.name === data.name);
+		if (subCommand?.type !== ApplicationCommandOptionType.Subcommand) return [];
+		const subOption = subCommand.options?.find(c => c.name === data.options?.[0].name);
+		if (!subOption) return [];
+		return handleAutocomplete(command, [data.options[0]], member, subOption);
+	}
+
+	const optionBeingAutocompleted = option ?? command.options.find(o => o.name === autocompleteData[0].name);
+
 	if (
 		optionBeingAutocompleted &&
 		'autocomplete' in optionBeingAutocompleted &&
 		optionBeingAutocompleted.autocomplete !== undefined
 	) {
-		const autocompleteResult = await optionBeingAutocompleted.autocomplete(value as never, member);
-		return autocompleteResult;
+		const autocompleteResult = await optionBeingAutocompleted.autocomplete(data.value as never, member);
+		return autocompleteResult.slice(0, 25);
 	}
 	return [];
 }

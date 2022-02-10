@@ -11,7 +11,7 @@ import {
 } from 'discord-api-types/v9';
 import { join } from 'path';
 
-import type { Adapter, AutocompleteData, InteractionErrorResponse, InteractionResponse } from '../types';
+import type { Adapter, InteractionErrorResponse, InteractionResponse } from '../types';
 import {
 	autocompleteResult,
 	bitFieldHasBit,
@@ -89,9 +89,8 @@ export class MahojiClient {
 
 		if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
 			const { data } = interaction;
-			const options = (data as any).options as AutocompleteData[];
-
 			if (!data) return autocompleteResult(interaction, this, []);
+			const { options } = data;
 			const command = this.commands.pieces.get(data.name);
 			return {
 				response: {
