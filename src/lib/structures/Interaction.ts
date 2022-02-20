@@ -10,9 +10,9 @@ export class Interaction implements IInteraction {
 	client: MahojiClient;
 	message?: APIMessage | undefined;
 	channelID: bigint;
-	guildID: bigint;
+	guildID?: bigint;
 	userID: bigint;
-	member: APIInteractionGuildMember;
+	member?: APIInteractionGuildMember;
 	user: APIUser;
 	data: IInteraction['data'];
 
@@ -20,23 +20,19 @@ export class Interaction implements IInteraction {
 		this.id = interaction.id;
 		this.token = interaction.token;
 
-		if (
-			!interaction.guild_id ||
-			!interaction.channel_id ||
-			!interaction.member?.user.id ||
-			!interaction.member ||
-			!interaction.member.user
-		) {
+		const user = interaction.member?.user ?? interaction.user;
+
+		if ((!interaction.user && !interaction.guild_id) || !interaction.channel_id || !user || !user.id) {
 			throw new Error('Missing essential properties for base Interaction.');
 		}
 
 		this.client = client;
-		this.guildID = BigInt(interaction.guild_id);
+		this.guildID = interaction.guild_id ? BigInt(interaction.guild_id) : undefined;
 		this.channelID = BigInt(interaction.channel_id);
-		this.userID = BigInt(interaction.member.user.id);
+		this.userID = BigInt(user.id);
 		this.applicationID = interaction.application_id;
 		this.member = interaction.member;
-		this.user = interaction.member.user;
+		this.user = user;
 		this.message = interaction.message;
 
 		// @ts-ignore TODO
