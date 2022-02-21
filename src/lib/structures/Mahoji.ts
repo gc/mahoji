@@ -86,7 +86,7 @@ export class MahojiClient {
 		const user = interaction.member?.user ?? interaction.user;
 
 		if (!user) {
-			throw new Error('Neither `interaction.user` or `interaction.member` are present somehow');
+			return null;
 		}
 
 		if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {

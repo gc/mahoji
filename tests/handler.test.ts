@@ -23,6 +23,7 @@ describe('server handles requests', () => {
 
 		await close();
 	});
+
 	test('handle good request', async () => {
 		const { inject, close } = await mockClient();
 
