@@ -290,4 +290,35 @@ describe('server handles requests', () => {
 		});
 		await close();
 	});
+
+	test('handles interaction from direct messages', async () => {
+		const { close, inject } = await mockClient();
+
+		const commandInteraction: APIChatInputApplicationCommandInteraction = {
+			...commandInteractionBase,
+			user: commandInteractionBase.member.user,
+			member: undefined,
+			guild_id: undefined,
+			data: {
+				id: mockSnowflake,
+				name: 'mahoji',
+				type: 1,
+				options: [
+					{
+						name: 'command',
+						type: 3,
+						value: 'ping'
+					}
+				]
+			}
+		};
+
+		expect(await inject(commandInteraction)).toStrictEqual({
+			data: {
+				content: 'Magnaboy, Pong!'
+			},
+			type: 4
+		});
+		await close();
+	});
 });
