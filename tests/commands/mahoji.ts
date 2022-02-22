@@ -24,9 +24,9 @@ export const command: ICommand = {
 			required: true
 		}
 	],
-	run: async ({ interaction, options, client }: CommandRunOptions<{ command: 'ping' | 'globalsync' }>) => {
+	run: async ({ user, options, client }: CommandRunOptions<{ command: 'ping' | 'globalsync' }>) => {
 		if (options.command === 'ping') {
-			return `${interaction.member?.user.username}, Pong!`;
+			return `${user.username}, Pong!`;
 		}
 		if (options.command === 'globalsync') {
 			await bulkUpdateCommands({ client, commands: client.commands.values, guildID: null });

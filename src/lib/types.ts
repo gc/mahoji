@@ -38,7 +38,8 @@ export type CommandOption = {
 			choices?: { name: string; value: string }[];
 			autocomplete?: (
 				value: string,
-				member: APIInteractionGuildMember
+				user: APIUser,
+				member?: APIInteractionGuildMember
 			) => Promise<APIApplicationCommandOptionChoice[]>;
 	  }
 	| {
@@ -46,7 +47,8 @@ export type CommandOption = {
 			choices?: { name: string; value: number }[];
 			autocomplete?: (
 				value: number,
-				member: APIInteractionGuildMember
+				user: APIUser,
+				member?: APIInteractionGuildMember
 			) => Promise<APIApplicationCommandOptionChoice[]>;
 			min_value?: number;
 			max_value?: number;
@@ -77,9 +79,10 @@ export interface CommandRunOptions<T extends CommandOptions = {}> {
 	interaction: SlashCommandInteraction;
 	options: T;
 	client: MahojiClient;
-	member: APIInteractionGuildMember;
+	user: APIUser;
+	member?: APIInteractionGuildMember;
 	channelID: bigint;
-	guildID: bigint;
+	guildID?: bigint;
 	userID: bigint;
 }
 
@@ -147,9 +150,9 @@ export interface IInteraction {
 	client: MahojiClient;
 	message?: APIMessage;
 	channelID: bigint;
-	guildID: bigint;
+	guildID?: bigint;
 	userID: bigint;
-	member: APIInteractionGuildMember;
+	member?: APIInteractionGuildMember;
 	user: APIUser;
 	data: ISlashCommandData | IAutocompleteData | IPingData;
 }

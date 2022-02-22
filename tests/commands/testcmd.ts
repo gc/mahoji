@@ -20,9 +20,9 @@ export const command: ICommand = {
 		}
 	],
 	requiredPermissions: ['AddReactions'],
-	run: async ({ options, member }: CommandRunOptions<{ name?: string; quantity?: number }>) => {
+	run: async ({ options, user }: CommandRunOptions<{ name?: string; quantity?: number }>) => {
 		return {
-			content: `${options.name ? options.name : member.user.username}, Pong!`.repeat(options.quantity ?? 1)
+			content: `${options.name ? options.name : user.username}, Pong!`.repeat(options.quantity ?? 1)
 		};
 	}
 };

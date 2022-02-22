@@ -83,9 +83,11 @@ export class MahojiClient {
 			return { response: { type: 1 }, interaction: null, type: InteractionType.Ping };
 		}
 
-		// Only support guild interactions for now, so we're guaranteed to have a member.
-		if (!interaction.member) return null;
-		const { member } = interaction;
+		const user = interaction.member?.user ?? interaction.user;
+
+		if (!user) {
+			return null;
+		}
 
 		if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
 			const { data } = interaction;
@@ -96,7 +98,7 @@ export class MahojiClient {
 				response: {
 					type: InteractionResponseType.ApplicationCommandAutocompleteResult,
 					data: {
-						choices: await handleAutocomplete(command, options, member)
+						choices: await handleAutocomplete(command, options, user, interaction.member)
 					}
 				},
 				interaction: new Interaction(interaction, this),
@@ -157,6 +159,7 @@ export class MahojiClient {
 					interaction: slashCommandInteraction,
 					options: slashCommandInteraction.options,
 					client: this,
+					user: slashCommandInteraction.user,
 					member: slashCommandInteraction.member,
 					channelID: slashCommandInteraction.channelID,
 					guildID: slashCommandInteraction.guildID,

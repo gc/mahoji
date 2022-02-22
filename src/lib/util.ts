@@ -230,7 +230,8 @@ export const autocompleteResult = (
 export async function handleAutocomplete(
 	command: ICommand | undefined,
 	autocompleteData: APIApplicationCommandInteractionDataOption[] | undefined,
-	member: APIInteractionGuildMember,
+	user: APIUser,
+	member?: APIInteractionGuildMember,
 	option?: CommandOption
 ): Promise<APIApplicationCommandOptionChoice[]> {
 	if (!command || !autocompleteData) return [];
@@ -245,7 +246,7 @@ export async function handleAutocomplete(
 		if (subCommand?.type !== ApplicationCommandOptionType.Subcommand) return [];
 		const subOption = subCommand.options?.find(c => c.name === data.options?.[0].name);
 		if (!subOption) return [];
-		return handleAutocomplete(command, [data.options[0]], member, subOption);
+		return handleAutocomplete(command, [data.options[0]], user, member, subOption);
 	}
 
 	const optionBeingAutocompleted = option ?? command.options.find(o => o.name === autocompleteData[0].name);
@@ -255,7 +256,7 @@ export async function handleAutocomplete(
 		'autocomplete' in optionBeingAutocompleted &&
 		optionBeingAutocompleted.autocomplete !== undefined
 	) {
-		const autocompleteResult = await optionBeingAutocompleted.autocomplete(data.value as never, member);
+		const autocompleteResult = await optionBeingAutocompleted.autocomplete(data.value as never, user, member);
 		return autocompleteResult.slice(0, 25);
 	}
 	return [];
