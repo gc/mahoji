@@ -237,10 +237,26 @@ export async function handleAutocomplete(
 	if (!command || !autocompleteData) return [];
 	const data = autocompleteData[0];
 
-	if (
-		data.type === ApplicationCommandOptionType.SubcommandGroup ||
-		data.type === ApplicationCommandOptionType.Subcommand
-	) {
+	if (data.type === ApplicationCommandOptionType.SubcommandGroup) {
+		const group = command.options.find(c => c.name === data.name);
+		if (group?.type !== ApplicationCommandOptionType.SubcommandGroup) return [];
+		const subCommand = group.options?.find(
+			c => c.name === data.options[0].name && c.type === ApplicationCommandOptionType.Subcommand
+		);
+		if (
+			!subCommand ||
+			!data.options ||
+			!data.options[0] ||
+			subCommand.type !== ApplicationCommandOptionType.Subcommand
+		) {
+			return [];
+		}
+		const option = data.options[0].options?.find(t => (t as any).focused);
+		if (!option) return [];
+		const subSubCommand = subCommand.options?.find(o => o.name === option.name);
+		return handleAutocomplete(command, [option], user, member, subSubCommand);
+	}
+	if (data.type === ApplicationCommandOptionType.Subcommand) {
 		if (!data.options || !data.options[0]) return [];
 		const subCommand = command.options.find(c => c.name === data.name);
 		if (subCommand?.type !== ApplicationCommandOptionType.Subcommand) return [];
