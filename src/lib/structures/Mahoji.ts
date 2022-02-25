@@ -22,11 +22,7 @@ import {
 	isValidCommand,
 	updateCommand
 } from '../util';
-import type {
-	ICommand,
-	InteractionResponseDataWithBufferAttachments,
-	InteractionResponseWithBufferAttachments
-} from './ICommand';
+import type { ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
 import { Interaction } from './Interaction';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
@@ -52,6 +48,7 @@ export interface Handlers {
 		interaction: SlashCommandInteraction;
 		error: Error | null;
 		response: InteractionResponseWithBufferAttachments | null;
+		inhibited: boolean;
 	}) => Promise<string | undefined>;
 }
 
@@ -134,28 +131,30 @@ export class MahojiClient {
 				}
 			}
 
-			const inhibitedResponse = await this.handlers.preCommand?.({
-				command: slashCommandInteraction.command,
-				interaction: slashCommandInteraction
-			});
-			if (inhibitedResponse) {
-				return {
-					response: {
-						data: {
-							content: inhibitedResponse,
-							flags: MessageFlags.Ephemeral
-						},
-						type: InteractionResponseType.ChannelMessageWithSource
-					},
-					interaction: slashCommandInteraction,
-					type: InteractionType.ApplicationCommand
-				};
-			}
-
 			let error: Error | null = null;
-			let response: string | InteractionResponseDataWithBufferAttachments | null = null;
+			let response: InteractionResponseWithBufferAttachments | null = null;
+			let inhibited = false;
 			try {
-				response = await slashCommandInteraction.command.run({
+				const inhibitedResponse = await this.handlers.preCommand?.({
+					command: slashCommandInteraction.command,
+					interaction: slashCommandInteraction
+				});
+				if (inhibitedResponse) {
+					inhibited = true;
+					return {
+						response: {
+							data: {
+								content: inhibitedResponse,
+								flags: MessageFlags.Ephemeral
+							},
+							type: InteractionResponseType.ChannelMessageWithSource
+						},
+						interaction: slashCommandInteraction,
+						type: InteractionType.ApplicationCommand
+					};
+				}
+
+				const rawResponse = await slashCommandInteraction.command.run({
 					interaction: slashCommandInteraction,
 					options: slashCommandInteraction.options,
 					client: this,
@@ -165,33 +164,36 @@ export class MahojiClient {
 					guildID: slashCommandInteraction.guildID,
 					userID: slashCommandInteraction.userID
 				});
-			} catch (err: unknown) {
+
+				response =
+					rawResponse === null
+						? slashCommandInteraction.data.response?.response ?? null
+						: typeof rawResponse === 'string'
+						? { data: { content: rawResponse }, type: InteractionResponseType.ChannelMessageWithSource }
+						: { data: { ...rawResponse }, type: InteractionResponseType.ChannelMessageWithSource };
+
+				if (!response) return null;
+
+				return {
+					response,
+					interaction: slashCommandInteraction,
+					type: InteractionType.ApplicationCommand
+				};
+			} catch (err) {
 				if (!(err instanceof Error)) console.error('Received an error that isnt an Error.');
 				error = err as Error;
+				if (error) {
+					return { error, interaction: slashCommandInteraction, type: InteractionType.ApplicationCommand };
+				}
+			} finally {
+				await this.handlers.postCommand?.({
+					command: slashCommandInteraction.command,
+					interaction: slashCommandInteraction,
+					error,
+					response,
+					inhibited
+				});
 			}
-
-			const apiResponse: InteractionResponseWithBufferAttachments | null =
-				response === null
-					? slashCommandInteraction.data.response?.response ?? null
-					: typeof response === 'string'
-					? { data: { content: response }, type: InteractionResponseType.ChannelMessageWithSource }
-					: { data: { ...response }, type: InteractionResponseType.ChannelMessageWithSource };
-
-			await this.handlers.postCommand?.({
-				command: slashCommandInteraction.command,
-				interaction: slashCommandInteraction,
-				error,
-				response: apiResponse
-			});
-
-			if (error) return { error, interaction: slashCommandInteraction, type: InteractionType.ApplicationCommand };
-			if (!apiResponse) return null;
-
-			return {
-				response: apiResponse,
-				interaction: slashCommandInteraction,
-				type: InteractionType.ApplicationCommand
-			};
 		}
 
 		return null;
