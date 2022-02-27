@@ -49,7 +49,7 @@ export interface Handlers {
 		error: Error | null;
 		response: InteractionResponseWithBufferAttachments | null;
 		inhibited: boolean;
-	}) => Promise<string | undefined>;
+	}) => Promise<unknown>;
 }
 
 export class MahojiClient {
