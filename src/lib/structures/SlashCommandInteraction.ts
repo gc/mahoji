@@ -43,7 +43,7 @@ export class SlashCommandInteraction extends Interaction {
 		});
 	}
 
-	async respond({ response }: SlashCommandResponse) {
+	async respond({ response }: SlashCommandResponse): Promise<void> {
 		// If this response is for a deferred interaction, we have to use a different route/method/body.
 		if (this.deferred) {
 			await this.client.restManager.patch(
@@ -61,6 +61,6 @@ export class SlashCommandInteraction extends Interaction {
 			);
 			return;
 		}
-		super.respond({ response, interaction: this, type: InteractionType.ApplicationCommand });
+		return super.respond({ response, interaction: this, type: InteractionType.ApplicationCommand });
 	}
 }
