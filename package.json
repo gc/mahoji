@@ -1,6 +1,6 @@
 {
   "name": "mahoji",
-  "version": "0.0.46",
+  "version": "0.0.47",
   "main": "dist/index.js",
   "scripts": {
     "dev:build": "tsc -p src",
@@ -14,7 +14,7 @@
     "test:lint": "eslint \"{src,tests}/**/*.ts\""
   },
   "dependencies": {
-    "@discordjs/rest": "^0.3.0",
+    "@discordjs/rest": "0.4.0-dev.1646654929.b162f27",
     "fastify": "^3.21.0",
     "form-data": "^4.0.0",
     "node-fetch": "^2.6.3"

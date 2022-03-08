@@ -53,8 +53,8 @@ export class SlashCommandInteraction extends Interaction {
 					files:
 						response.data && 'attachments' in response.data
 							? response.data.attachments?.map(a => ({
-									fileName: a.fileName,
-									fileData: a.buffer
+									name: a.fileName,
+									data: a.buffer
 							  }))
 							: undefined
 				}

@@ -49,8 +49,8 @@ export class Interaction implements IInteraction {
 			const files =
 				result.response.data && 'attachments' in result.response.data
 					? result.response.data.attachments?.map(a => ({
-							fileName: a.fileName,
-							fileData: a.buffer
+							name: a.fileName,
+							data: a.buffer
 					  }))
 					: undefined;
 			if (result.response.data?.attachments) {
