@@ -13,7 +13,7 @@ export interface InteractionResponseWithBufferAttachments {
 export type InteractionResponseDataWithBufferAttachments = {
 	attachments?: { fileName: string; buffer: Buffer }[];
 } & Omit<APIInteractionResponseCallbackData, 'attachments'>;
-type CommandResponse = Promise<string | InteractionResponseDataWithBufferAttachments>;
+export type CommandResponse = Promise<string | InteractionResponseDataWithBufferAttachments>;
 
 export type ICommand = Readonly<{
 	description: string;
