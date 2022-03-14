@@ -10,8 +10,14 @@ export interface InteractionResponseWithBufferAttachments {
 	data?: InteractionResponseDataWithBufferAttachments;
 	type: InteractionResponseType;
 }
+
+export interface MahojiAttachment {
+	fileName: string;
+	buffer: Buffer;
+}
+
 export type InteractionResponseDataWithBufferAttachments = {
-	attachments?: { fileName: string; buffer: Buffer }[];
+	attachments?: MahojiAttachment[];
 } & Omit<APIInteractionResponseCallbackData, 'attachments'>;
 export type CommandResponse = Promise<string | InteractionResponseDataWithBufferAttachments>;
 
