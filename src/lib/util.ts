@@ -235,7 +235,7 @@ export async function handleAutocomplete(
 	option?: CommandOption
 ): Promise<APIApplicationCommandOptionChoice[]> {
 	if (!command || !autocompleteData) return [];
-	const data = autocompleteData[0];
+	const data = autocompleteData.find(i => 'focused' in i && i.focused === true) ?? autocompleteData[0];
 
 	if (data.type === ApplicationCommandOptionType.SubcommandGroup) {
 		const group = command.options.find(c => c.name === data.name);
