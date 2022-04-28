@@ -265,7 +265,7 @@ export async function handleAutocomplete(
 		return handleAutocomplete(command, [data.options[0]], user, member, subOption);
 	}
 
-	const optionBeingAutocompleted = option ?? command.options.find(o => o.name === autocompleteData[0].name);
+	const optionBeingAutocompleted = option ?? command.options.find(o => o.name === data.name);
 
 	if (
 		optionBeingAutocompleted &&
