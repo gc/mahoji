@@ -260,9 +260,11 @@ export async function handleAutocomplete(
 		if (!data.options || !data.options[0]) return [];
 		const subCommand = command.options.find(c => c.name === data.name);
 		if (subCommand?.type !== ApplicationCommandOptionType.Subcommand) return [];
-		const subOption = subCommand.options?.find(c => c.name === data.options?.[0].name);
+		const option = data.options.find(o => ('focused' in o ? Boolean(o.focused) : false)) ?? data.options[0];
+		const subOption = subCommand.options?.find(c => c.name === option.name);
 		if (!subOption) return [];
-		return handleAutocomplete(command, [data.options[0]], user, member, subOption);
+
+		return handleAutocomplete(command, [option], user, member, subOption);
 	}
 
 	const optionBeingAutocompleted = option ?? command.options.find(o => o.name === data.name);
