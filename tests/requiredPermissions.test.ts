@@ -1,6 +1,7 @@
 import {
 	APIChatInputApplicationCommandInteraction,
 	APIInteractionGuildMember,
+	Locale,
 	MessageFlags,
 	PermissionFlagsBits
 } from 'discord-api-types/v9';
@@ -35,7 +36,8 @@ describe('server handles requests', () => {
 						value: 5
 					}
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({
@@ -71,7 +73,8 @@ describe('server handles requests', () => {
 						value: 5
 					}
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 		expect(await inject(commandInteraction)).toStrictEqual({
 			data: {
@@ -105,7 +108,8 @@ describe('server handles requests', () => {
 						value: 5
 					}
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({

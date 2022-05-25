@@ -126,7 +126,11 @@ export async function mockClient(options?: {
 		interactionsEndpointURL: '/interactions',
 		httpPort: 8322,
 		client,
-		discordPublicKey: publicKey
+		discordPublicKey: publicKey,
+		errorHandler: err => {
+			console.error(err);
+			return err.message;
+		}
 	});
 
 	if (options?.clientCommands) {

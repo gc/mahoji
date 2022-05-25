@@ -1,4 +1,5 @@
 import { ApplicationCommandOptionType } from 'discord-api-types/v9';
+import { ApplicationCommandType } from 'discord-api-types/v10';
 
 import { convertAPIOptionsToCommandOptions, convertCommandToAPICommand, isValidCommand } from '../src/lib/util';
 import { commandInteractionModActions } from './data/command_interaction';
@@ -10,7 +11,8 @@ describe('utils', () => {
 		expect(convertCommandToAPICommand(command)).toStrictEqual({
 			name: 'test',
 			description: 'This is a fake, testing command!',
-			options: []
+			options: [],
+			type: ApplicationCommandType.ChatInput
 		});
 	});
 	test('isValidCommand', () => {

@@ -4,7 +4,7 @@ import FormData from 'form-data';
 
 import type { MahojiClient } from '../..';
 import type { Adapter } from '../types';
-import { CryptoKey, ERROR_RESPONSE, handleFormData, webcrypto } from '../util';
+import { CryptoKey, handleFormData, webcrypto } from '../util';
 
 interface Response {
 	message: string;
@@ -116,25 +116,29 @@ export class FastifyAdapter implements Adapter {
 	server: FastifyInstance;
 	cryptoKey: Promise<CryptoKey>;
 	discordPublicKey: string;
+	errorHandler: (err: Error) => string;
 
 	constructor({
 		fastifyOptions,
 		client,
 		httpPort,
 		interactionsEndpointURL,
-		discordPublicKey
+		discordPublicKey,
+		errorHandler
 	}: {
 		client: MahojiClient;
 		fastifyOptions: FastifyServerOptions;
 		interactionsEndpointURL: string;
 		httpPort: number;
 		discordPublicKey: string;
+		errorHandler: (err: Error) => string;
 	}) {
 		this.client = client;
 		this.client.adapters.push(this);
 		this.interactionsEndpointURL = interactionsEndpointURL;
 		this.httpPort = httpPort;
 		this.discordPublicKey = discordPublicKey;
+		this.errorHandler = errorHandler;
 
 		this.cryptoKey = webcrypto.subtle.importKey(
 			'raw',
@@ -146,7 +150,7 @@ export class FastifyAdapter implements Adapter {
 
 		this.server = fastify(fastifyOptions);
 
-		this.server.addHook('onError', (__, _, err) => console.error(err));
+		this.server.addHook('onError', (__, _, err) => errorHandler(err));
 
 		this.server.post(this.interactionsEndpointURL, async (req, res) => {
 			const result = await verifyDiscordCrypto({
@@ -158,18 +162,20 @@ export class FastifyAdapter implements Adapter {
 				return res.badRequest();
 			}
 
-			const response = await this.client.parseInteraction(result.interaction);
-			if (response) {
-				if ('error' in response) {
-					return res.send(ERROR_RESPONSE);
+			try {
+				const response = await this.client.parseInteraction(result.interaction);
+				if (response) {
+					if ('error' in response) {
+						return res.send(this.errorHandler(response.error));
+					}
+					const formData = handleFormData(response);
+					if (formData instanceof FormData) {
+						return res.headers(formData.getHeaders()).send(formData);
+					}
+					return res.send(formData.response);
 				}
-				const formData = handleFormData(response);
-				if (formData instanceof FormData) {
-					res.headers(formData.getHeaders()).send(formData);
-				} else {
-					res.send(formData.response);
-				}
-				return;
+			} catch (err) {
+				return res.send(this.errorHandler(err as Error));
 			}
 
 			return res.notFound();

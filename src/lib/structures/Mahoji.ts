@@ -82,20 +82,19 @@ export class MahojiClient {
 
 		const user = interaction.member?.user ?? interaction.user;
 
-		if (!user) {
-			return null;
-		}
+		if (!user) return null;
 
 		if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
 			const { data } = interaction;
 			if (!data) return autocompleteResult(interaction, this, []);
 			const { options } = data;
 			const command = this.commands.pieces.get(data.name);
+			const choices = await handleAutocomplete(command, options, user, interaction.member);
 			return {
 				response: {
 					type: InteractionResponseType.ApplicationCommandAutocompleteResult,
 					data: {
-						choices: await handleAutocomplete(command, options, user, interaction.member)
+						choices
 					}
 				},
 				interaction: new Interaction(interaction, this),

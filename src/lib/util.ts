@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 import type { APIApplicationCommandAutocompleteInteraction } from 'discord-api-types/payloads/v9/_interactions/autocomplete';
+import type { APIApplicationCommandOptionChoice } from 'discord-api-types/payloads/v10';
 import {
 	APIApplicationCommandInteractionDataOption,
 	APIApplicationCommandOption,
-	APIApplicationCommandOptionChoice,
 	APIChatInputApplicationCommandInteraction,
 	APIChatInputApplicationCommandInteractionDataResolved,
 	APIInteractionDataResolvedChannel,
@@ -13,6 +13,7 @@ import {
 	APIRole,
 	APIUser,
 	ApplicationCommandOptionType,
+	ApplicationCommandType,
 	InteractionResponseType,
 	InteractionType,
 	RESTPostAPIApplicationGuildCommandsJSONBody,
@@ -117,8 +118,11 @@ export function convertCommandOptionToAPIOption(option: CommandOption): APIAppli
 	}
 }
 
-export function convertCommandToAPICommand(cmd: ICommand): RESTPostAPIApplicationGuildCommandsJSONBody {
+export function convertCommandToAPICommand(
+	cmd: ICommand
+): RESTPostAPIApplicationGuildCommandsJSONBody & { description: string } {
 	return {
+		type: ApplicationCommandType.ChatInput,
 		name: cmd.name,
 		description: cmd.description,
 		options: cmd.options.map(convertCommandOptionToAPIOption)
@@ -275,7 +279,10 @@ export async function handleAutocomplete(
 		optionBeingAutocompleted.autocomplete !== undefined
 	) {
 		const autocompleteResult = await optionBeingAutocompleted.autocomplete(data.value as never, user, member);
-		return autocompleteResult.slice(0, 25);
+		return autocompleteResult.slice(0, 25).map(i => ({
+			name: i.name,
+			value: i.value.toString()
+		}));
 	}
 	return [];
 }
@@ -319,10 +326,3 @@ export function handleFormData(response: InteractionResponse): InteractionRespon
 
 	return finalBody;
 }
-
-export const ERROR_RESPONSE: InteractionResponseWithBufferAttachments = {
-	data: {
-		content: 'There was an error running this command.'
-	},
-	type: InteractionResponseType.ChannelMessageWithSource
-};

@@ -1,4 +1,9 @@
-import { APIChatInputApplicationCommandInteraction, APIPingInteraction, InteractionType } from 'discord-api-types/v9';
+import {
+	APIChatInputApplicationCommandInteraction,
+	APIPingInteraction,
+	InteractionType,
+	Locale
+} from 'discord-api-types/v9';
 
 import { Time } from '../src/lib/util';
 import { baseRequest, commandInteractionBase, mockClient, mockCommand, mockSnowflake } from './testUtil';
@@ -128,7 +133,8 @@ describe('server handles requests', () => {
 				name: mockCommand.name,
 				type: 1,
 				options: []
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({
@@ -161,7 +167,8 @@ describe('server handles requests', () => {
 						value: 5
 					}
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({
@@ -189,7 +196,8 @@ describe('server handles requests', () => {
 						value: 'ping'
 					}
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({
@@ -211,7 +219,8 @@ describe('server handles requests', () => {
 				name: mockCommand.name,
 				type: 1,
 				options: []
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({
@@ -238,7 +247,8 @@ describe('server handles requests', () => {
 						value: 'ping'
 					}
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({
@@ -256,7 +266,8 @@ describe('server handles requests', () => {
 				name: 'mahoji',
 				type: 3,
 				options: undefined
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction2)).toStrictEqual({
@@ -279,7 +290,8 @@ describe('server handles requests', () => {
 						type: 1
 					} as any
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction3)).toStrictEqual({
@@ -310,7 +322,8 @@ describe('server handles requests', () => {
 						value: 'ping'
 					}
 				]
-			}
+			},
+			locale: Locale.EnglishUS
 		};
 
 		expect(await inject(commandInteraction)).toStrictEqual({
