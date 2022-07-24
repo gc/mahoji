@@ -63,13 +63,12 @@ export type CommandOption = {
 	  }
 );
 
-type MahojiCommandOption =
-	| number
-	| string
-	| { user: APIUser; member: APIInteractionDataResolvedGuildMember }
-	| APIInteractionDataResolvedChannel
-	| APIRole
-	| boolean;
+export interface MahojiUserOption {
+	user: APIUser;
+	member: APIInteractionDataResolvedGuildMember;
+}
+
+type MahojiCommandOption = number | string | MahojiUserOption | APIInteractionDataResolvedChannel | APIRole | boolean;
 
 export interface CommandOptions {
 	[key: string]: MahojiCommandOption | CommandOptions;
