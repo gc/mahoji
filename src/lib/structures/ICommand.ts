@@ -25,6 +25,7 @@ export type ICommand = Readonly<{
 	description: string;
 	options: CommandOption[];
 	requiredPermissions?: (keyof typeof PermissionFlagsBits)[];
+	guildID?: string;
 	run(options: CommandRunOptions): CommandResponse;
 }> &
 	Piece;

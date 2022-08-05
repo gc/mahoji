@@ -138,7 +138,7 @@ export async function bulkUpdateCommands({
 	commands: ICommand[];
 	guildID: Snowflake | null;
 }) {
-	const apiCommands = commands.map(convertCommandToAPICommand);
+	const apiCommands = commands.filter(i => !i.guildID).map(convertCommandToAPICommand);
 
 	const route =
 		guildID === null
@@ -163,7 +163,7 @@ export async function updateCommand({
 	const route =
 		guildID === null
 			? Routes.applicationCommands(client.applicationID)
-			: Routes.applicationGuildCommands(client.applicationID, guildID);
+			: Routes.applicationGuildCommands(client.applicationID, guildID ?? command.guildID);
 	return client.restManager.post(route, {
 		body: apiCommand
 	});
