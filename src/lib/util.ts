@@ -138,7 +138,7 @@ export async function bulkUpdateCommands({
 	commands: ICommand[];
 	guildID: Snowflake | null;
 }) {
-	const apiCommands = commands.filter(i => !i.guildID).map(convertCommandToAPICommand);
+	const apiCommands = commands.map(convertCommandToAPICommand);
 
 	const route =
 		guildID === null
