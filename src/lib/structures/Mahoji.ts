@@ -22,7 +22,7 @@ import {
 	isValidCommand,
 	updateCommand
 } from '../util';
-import type { ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
+import type { CommandResponse, ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
 import { Interaction } from './Interaction';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
 import { Store } from './Store';
@@ -42,7 +42,10 @@ export const defaultMahojiOptions = {
 } as const;
 
 export interface Handlers {
-	preCommand?: (options: { command: ICommand; interaction: SlashCommandInteraction }) => Promise<string | undefined>;
+	preCommand?: (options: {
+		command: ICommand;
+		interaction: SlashCommandInteraction;
+	}) => Promise<Awaited<CommandResponse> | undefined>;
 	postCommand?: (options: {
 		command: ICommand;
 		interaction: SlashCommandInteraction;
@@ -142,10 +145,16 @@ export class MahojiClient {
 					inhibited = true;
 					return {
 						response: {
-							data: {
-								content: inhibitedResponse,
-								flags: MessageFlags.Ephemeral
-							},
+							data:
+								typeof inhibitedResponse === 'string'
+									? {
+											content: inhibitedResponse,
+											flags: MessageFlags.Ephemeral
+									  }
+									: {
+											flags: MessageFlags.Ephemeral,
+											...inhibitedResponse
+									  },
 							type: InteractionResponseType.ChannelMessageWithSource
 						},
 						interaction: slashCommandInteraction,
