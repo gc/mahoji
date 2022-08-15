@@ -1,27 +1,16 @@
 import { REST } from '@discordjs/rest';
 import {
-	APIApplicationCommand,
 	APIChatInputApplicationCommandInteraction,
 	APIInteraction,
 	InteractionResponseType,
 	InteractionType,
 	MessageFlags,
-	PermissionFlagsBits,
-	Routes
+	PermissionFlagsBits
 } from 'discord-api-types/v9';
 import { join } from 'path';
 
 import type { Adapter, InteractionErrorResponse, InteractionResponse } from '../types';
-import {
-	autocompleteResult,
-	bitFieldHasBit,
-	bulkUpdateCommands,
-	commandOptionMatches,
-	convertCommandOptionToAPIOption,
-	handleAutocomplete,
-	isValidCommand,
-	updateCommand
-} from '../util';
+import { autocompleteResult, bitFieldHasBit, handleAutocomplete, isValidCommand } from '../util';
 import type { CommandResponse, ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
 import { Interaction } from './Interaction';
 import { SlashCommandInteraction } from './SlashCommandInteraction';
@@ -208,52 +197,7 @@ export class MahojiClient {
 	}
 
 	async start() {
-		await this.loadStores();
+		await this.commands.load();
 		await Promise.all(this.adapters.map(adapter => adapter.init()));
-	}
-
-	async loadStores() {
-		await Promise.all([this.commands].map(store => store.load()));
-		await this.updateCommands();
-	}
-
-	async updateCommands() {
-		const liveCommands = (await this.restManager.get(
-			Routes.applicationGuildCommands(this.applicationID, this.developmentServerID)
-		)) as APIApplicationCommand[];
-
-		const changedCommands: ICommand[] = [];
-
-		// Find commands that don't match their previous values
-		for (const currentCommand of this.commands.values) {
-			const liveCmd = liveCommands.find(c => c.name === currentCommand.name);
-			if (!liveCmd) {
-				changedCommands.push(currentCommand);
-				continue;
-			}
-			if (currentCommand.description !== liveCmd.description) {
-				changedCommands.push(currentCommand);
-				continue;
-			}
-			const currentOptions = currentCommand.options.map(convertCommandOptionToAPIOption);
-			const liveOptions = liveCmd.options;
-
-			for (let i = 0; i < currentOptions.length; i++) {
-				const liveOpt = liveOptions?.[i];
-
-				const match = liveOpt && commandOptionMatches(liveOpt, currentOptions[i]);
-				if (match && !match.matches) {
-					changedCommands.push(currentCommand);
-				}
-			}
-		}
-
-		// If more than 3 commands need to be updated, bulk update ALL of them.
-		// Otherwise, just individually update the changed command(s)
-		if (changedCommands.length > 3) {
-			bulkUpdateCommands({ client: this, commands: this.commands.values, guildID: this.developmentServerID });
-		} else {
-			changedCommands.map(command => updateCommand({ client: this, command, guildID: this.developmentServerID }));
-		}
 	}
 }
