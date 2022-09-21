@@ -108,7 +108,11 @@ export class MahojiClient {
 					userID: interaction.user.id
 				});
 				if (!response) return;
-				return interaction.reply(response);
+				if (interaction.deferred) {
+					return interaction.editReply(response);
+				}
+				const replyResponse = await interaction.reply(response);
+				return replyResponse;
 			} catch (err) {
 				if (!(err instanceof Error)) console.error('Received an error that isnt an Error.');
 				error = err as Error;

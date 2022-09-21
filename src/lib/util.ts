@@ -11,7 +11,6 @@ import {
 	Routes,
 	Snowflake
 } from 'discord.js';
-import { writeFileSync } from 'fs';
 
 import type { CommandOption, CommandOptions } from '../lib/types';
 import type { ICommand } from './structures/ICommand';
@@ -88,7 +87,7 @@ export async function bulkUpdateCommands({
 		guildID === null
 			? Routes.applicationCommands(client.applicationID)
 			: Routes.applicationGuildCommands(client.applicationID, guildID);
-	writeFileSync('./asdffasd.txt', JSON.stringify(apiCommands, null, 4));
+
 	return client.djsClient.rest.put(route, {
 		body: apiCommands
 	});
