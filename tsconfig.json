@@ -31,10 +31,9 @@
 		"noImplicitAny": true,
 		"strictNullChecks": true,
 		"types": [
-			"@types/jest",
 			"@types/node"
 		]
   },
-  "include": ["src", "tests"],
+  "include": ["src"],
   "exclude": ["node_modules"]
 }
