@@ -1,193 +1,129 @@
-import { REST } from '@discordjs/rest';
-import {
-	APIChatInputApplicationCommandInteraction,
-	APIInteraction,
-	InteractionResponseType,
-	InteractionType,
-	MessageFlags,
-	PermissionFlagsBits
-} from 'discord-api-types/v9';
+import { ChatInputCommandInteraction, Client, Interaction, PermissionFlagsBits } from 'discord.js';
 import { join } from 'path';
 
-import type { Adapter, InteractionErrorResponse, InteractionResponse } from '../types';
-import { autocompleteResult, bitFieldHasBit, handleAutocomplete, isValidCommand } from '../util';
-import type { CommandResponse, ICommand, InteractionResponseWithBufferAttachments } from './ICommand';
-import { Interaction } from './Interaction';
-import { SlashCommandInteraction } from './SlashCommandInteraction';
+import { convertAPIOptionsToCommandOptions, handleAutocomplete, isValidCommand } from '../util';
+import type { CommandResponse, ICommand } from './ICommand';
 import { Store } from './Store';
 
 interface MahojiOptions {
-	discordToken: string;
 	developmentServerID: string;
 	applicationID: string;
 	storeDirs?: string[];
 	handlers?: Handlers;
+	djsClient: Client;
 }
 
 export const defaultMahojiOptions = {
-	discordPublicKey: '',
-	discordToken: '',
 	developmentServer: ''
 } as const;
 
 export interface Handlers {
 	preCommand?: (options: {
 		command: ICommand;
-		interaction: SlashCommandInteraction;
+		interaction: ChatInputCommandInteraction;
 	}) => Promise<Awaited<CommandResponse> | undefined>;
 	postCommand?: (options: {
 		command: ICommand;
-		interaction: SlashCommandInteraction;
+		interaction: ChatInputCommandInteraction;
 		error: Error | null;
-		response: InteractionResponseWithBufferAttachments | null;
 		inhibited: boolean;
 	}) => Promise<unknown>;
 }
 
 export class MahojiClient {
 	commands: Store<ICommand>;
-	token: string;
 	developmentServerID: string;
 	applicationID: string;
 	storeDirs: string[];
-	restManager: REST;
-	adapters: Adapter[] = [];
 	handlers: Handlers;
+	djsClient: Client;
 
 	constructor(options: MahojiOptions) {
-		this.token = options.discordToken;
 		this.developmentServerID = options.developmentServerID;
 		this.applicationID = options.applicationID;
 
 		this.storeDirs = [...(options.storeDirs ?? [process.cwd()]), join('node_modules', 'mahoji', 'dist')];
 		this.commands = new Store<ICommand>({ name: 'commands', dirs: this.storeDirs, checker: isValidCommand });
-		this.restManager = new REST({ version: '9' }).setToken(this.token);
 		this.handlers = options.handlers ?? {};
+		this.djsClient = options.djsClient;
 	}
 
-	async parseInteraction(
-		interaction: APIInteraction
-	): Promise<InteractionResponse | InteractionErrorResponse | null> {
-		if (interaction.type === InteractionType.Ping) {
-			return { response: { type: 1 }, interaction: null, type: InteractionType.Ping };
+	async parseInteraction(interaction: Interaction) {
+		const member = interaction.inCachedGuild() ? interaction.member : undefined;
+
+		if (interaction.isAutocomplete()) {
+			const command = this.commands.pieces.get(interaction.commandName);
+			const choices = await handleAutocomplete(command, interaction, member);
+			return interaction.respond(choices);
 		}
 
-		const user = interaction.member?.user ?? interaction.user;
-
-		if (!user) return null;
-
-		if (interaction.type === InteractionType.ApplicationCommandAutocomplete) {
-			const { data } = interaction;
-			if (!data) return autocompleteResult(interaction, this, []);
-			const { options } = data;
-			const command = this.commands.pieces.get(data.name);
-			const choices = await handleAutocomplete(command, options, user, interaction.member);
-			return {
-				response: {
-					type: InteractionResponseType.ApplicationCommandAutocompleteResult,
-					data: {
-						choices
-					}
-				},
-				interaction: new Interaction(interaction, this),
-				type: InteractionType.ApplicationCommandAutocomplete
-			};
-		}
-
-		if (interaction.type === InteractionType.ApplicationCommand) {
-			const command = this.commands.pieces.get(interaction.data.name);
+		if (interaction.isChatInputCommand()) {
+			const command = this.commands.pieces.get(interaction.commandName);
 			if (!command) return null;
-			const slashCommandInteraction = new SlashCommandInteraction(
-				interaction as APIChatInputApplicationCommandInteraction,
-				this
-			);
 
 			// Permissions
-			if (slashCommandInteraction.command.requiredPermissions) {
-				if (!slashCommandInteraction.member) return null;
-				for (const perm of slashCommandInteraction.command.requiredPermissions) {
-					if (!bitFieldHasBit(slashCommandInteraction.member.permissions, PermissionFlagsBits[perm])) {
-						return {
-							response: {
-								data: {
-									content: "You don't have permission to use this command.",
-									flags: MessageFlags.Ephemeral
-								},
-								type: InteractionResponseType.ChannelMessageWithSource
-							},
-							interaction: slashCommandInteraction,
-							type: InteractionType.ApplicationCommand
-						};
+			if (command.requiredPermissions) {
+				if (!interaction.member || !interaction.memberPermissions) return null;
+				for (const perm of command.requiredPermissions) {
+					if (!interaction.memberPermissions.has(PermissionFlagsBits[perm])) {
+						return interaction.reply({
+							content: "You don't have permission to use this command.",
+							ephemeral: true
+						});
 					}
 				}
 			}
 
 			let error: Error | null = null;
-			let response: InteractionResponseWithBufferAttachments | null = null;
 			let inhibited = false;
 			try {
 				const inhibitedResponse = await this.handlers.preCommand?.({
-					command: slashCommandInteraction.command,
-					interaction: slashCommandInteraction
+					command,
+					interaction
 				});
 				if (inhibitedResponse) {
 					inhibited = true;
-					return {
-						response: {
-							data:
-								typeof inhibitedResponse === 'string'
-									? {
-											content: inhibitedResponse,
-											flags: MessageFlags.Ephemeral
-									  }
-									: {
-											flags: MessageFlags.Ephemeral,
-											...inhibitedResponse
-									  },
-							type: InteractionResponseType.ChannelMessageWithSource
-						},
-						interaction: slashCommandInteraction,
-						type: InteractionType.ApplicationCommand
-					};
+					const res =
+						typeof inhibitedResponse === 'string'
+							? {
+									content: inhibitedResponse
+							  }
+							: {
+									...inhibitedResponse
+							  };
+					return interaction.reply({
+						ephemeral: true,
+						...res
+					});
 				}
 
-				const rawResponse = await slashCommandInteraction.command.run({
-					interaction: slashCommandInteraction,
-					options: slashCommandInteraction.options,
+				const response = await command.run({
+					interaction,
+					options: convertAPIOptionsToCommandOptions(interaction.options.data, interaction.options.resolved),
 					client: this,
-					user: slashCommandInteraction.user,
-					member: slashCommandInteraction.member,
-					channelID: slashCommandInteraction.channelID,
-					guildID: slashCommandInteraction.guildID,
-					userID: slashCommandInteraction.userID
+					user: interaction.user,
+					member: interaction.member,
+					channelID: interaction.channelId,
+					guildID: interaction.guild?.id,
+					userID: interaction.user.id
 				});
-
-				response =
-					rawResponse === null
-						? slashCommandInteraction.data.response?.response ?? null
-						: typeof rawResponse === 'string'
-						? { data: { content: rawResponse }, type: InteractionResponseType.ChannelMessageWithSource }
-						: { data: { ...rawResponse }, type: InteractionResponseType.ChannelMessageWithSource };
-
-				if (!response) return null;
-
-				return {
-					response,
-					interaction: slashCommandInteraction,
-					type: InteractionType.ApplicationCommand
-				};
+				if (!response) return;
+				if (interaction.deferred) {
+					return interaction.editReply(response);
+				}
+				const replyResponse = await interaction.reply(response);
+				return replyResponse;
 			} catch (err) {
 				if (!(err instanceof Error)) console.error('Received an error that isnt an Error.');
 				error = err as Error;
 				if (error) {
-					return { error, interaction: slashCommandInteraction, type: InteractionType.ApplicationCommand };
+					return { error };
 				}
 			} finally {
 				await this.handlers.postCommand?.({
-					command: slashCommandInteraction.command,
-					interaction: slashCommandInteraction,
+					command,
+					interaction,
 					error,
-					response,
 					inhibited
 				});
 			}
@@ -198,6 +134,5 @@ export class MahojiClient {
 
 	async start() {
 		await this.commands.load();
-		await Promise.all(this.adapters.map(adapter => adapter.init()));
 	}
 }
