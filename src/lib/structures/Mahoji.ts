@@ -1,8 +1,14 @@
-import { ChatInputCommandInteraction, Client, Interaction, PermissionFlagsBits } from 'discord.js';
+import {
+	ChatInputCommandInteraction,
+	Client,
+	Interaction,
+	InteractionReplyOptions,
+	PermissionFlagsBits
+} from 'discord.js';
 import { join } from 'path';
 
 import { convertAPIOptionsToCommandOptions, handleAutocomplete, isValidCommand } from '../util';
-import type { CommandResponse, ICommand } from './ICommand';
+import type { ICommand } from './ICommand';
 import { Store } from './Store';
 
 interface MahojiOptions {
@@ -21,7 +27,9 @@ export interface Handlers {
 	preCommand?: (options: {
 		command: ICommand;
 		interaction: ChatInputCommandInteraction;
-	}) => Promise<Awaited<CommandResponse> | undefined>;
+	}) => Promise<
+		undefined | { reason: Awaited<InteractionReplyOptions>; silent: boolean; dontRunPostCommand?: boolean }
+	>;
 	postCommand?: (options: {
 		command: ICommand;
 		interaction: ChatInputCommandInteraction;
@@ -76,24 +84,18 @@ export class MahojiClient {
 
 			let error: Error | null = null;
 			let inhibited = false;
+			let runPostCommand = true;
 			try {
 				const inhibitedResponse = await this.handlers.preCommand?.({
 					command,
 					interaction
 				});
 				if (inhibitedResponse) {
+					if (inhibitedResponse.dontRunPostCommand) runPostCommand = false;
 					inhibited = true;
-					const res =
-						typeof inhibitedResponse === 'string'
-							? {
-									content: inhibitedResponse
-							  }
-							: {
-									...inhibitedResponse
-							  };
 					return interaction.reply({
 						ephemeral: true,
-						...res
+						...inhibitedResponse.reason
 					});
 				}
 
@@ -120,12 +122,14 @@ export class MahojiClient {
 					return { error };
 				}
 			} finally {
-				await this.handlers.postCommand?.({
-					command,
-					interaction,
-					error,
-					inhibited
-				});
+				if (runPostCommand) {
+					await this.handlers.postCommand?.({
+						command,
+						interaction,
+						error,
+						inhibited
+					});
+				}
 			}
 		}
 

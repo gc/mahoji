@@ -155,6 +155,21 @@ export function convertAPIOptionsToCommandOptions(
 	return parsedOptions;
 }
 
+function allOptionsFlat(options: CommandOption[]) {
+	let newOptions: CommandOption[] = [];
+	for (const option of options) {
+		if (
+			(option.type === ApplicationCommandOptionType.SubcommandGroup ||
+				option.type === ApplicationCommandOptionType.Subcommand) &&
+			option.options
+		) {
+			newOptions.push(...allOptionsFlat(option.options));
+		}
+		newOptions.push(option);
+	}
+	return newOptions;
+}
+
 export async function handleAutocomplete(
 	command: ICommand | undefined,
 	interaction: AutocompleteInteraction,
@@ -162,7 +177,7 @@ export async function handleAutocomplete(
 ): Promise<APIApplicationCommandOptionChoice[]> {
 	if (!command || !interaction) return [];
 	const data = interaction.options.getFocused(true);
-	const optionBeingAutocompleted = command.options.find(o => o.name === data.name);
+	const optionBeingAutocompleted = allOptionsFlat(command.options).find(o => o.name === data.name);
 
 	if (
 		optionBeingAutocompleted &&
