@@ -1,12 +1,14 @@
 import {
 	ChatInputCommandInteraction,
 	Client,
+	CommandInteractionOption,
 	Interaction,
 	InteractionReplyOptions,
 	PermissionFlagsBits
 } from 'discord.js';
 import { join } from 'path';
 
+import type { CommandOptions } from '../types';
 import { convertAPIOptionsToCommandOptions, handleAutocomplete, isValidCommand } from '../util';
 import type { ICommand } from './ICommand';
 import { Store } from './Store';
@@ -35,6 +37,7 @@ export interface Handlers {
 		interaction: ChatInputCommandInteraction;
 		error: Error | null;
 		inhibited: boolean;
+		options: CommandOptions;
 	}) => Promise<unknown>;
 }
 
@@ -61,7 +64,12 @@ export class MahojiClient {
 
 		if (interaction.isAutocomplete()) {
 			const command = this.commands.pieces.get(interaction.commandName);
-			const choices = await handleAutocomplete(command, interaction, member);
+			const choices = await handleAutocomplete(
+				command,
+				(interaction.options as any).data as CommandInteractionOption[],
+				member,
+				interaction.user
+			);
 			return interaction.respond(choices);
 		}
 
@@ -82,6 +90,7 @@ export class MahojiClient {
 				}
 			}
 
+			const options = convertAPIOptionsToCommandOptions(interaction.options.data, interaction.options.resolved);
 			let error: Error | null = null;
 			let inhibited = false;
 			let runPostCommand = true;
@@ -101,7 +110,7 @@ export class MahojiClient {
 
 				const response = await command.run({
 					interaction,
-					options: convertAPIOptionsToCommandOptions(interaction.options.data, interaction.options.resolved),
+					options,
 					client: this,
 					user: interaction.user,
 					member: interaction.member,
@@ -127,7 +136,8 @@ export class MahojiClient {
 						command,
 						interaction,
 						error,
-						inhibited
+						inhibited,
+						options
 					});
 				}
 			}

@@ -4,12 +4,13 @@ import {
 	APIApplicationCommandOptionChoice,
 	ApplicationCommandOptionType,
 	ApplicationCommandType,
-	AutocompleteInteraction,
 	ChatInputCommandInteraction,
+	CommandInteractionOption,
 	GuildMember,
 	RESTPostAPIApplicationGuildCommandsJSONBody,
 	Routes,
-	Snowflake
+	Snowflake,
+	User
 } from 'discord.js';
 
 import type { CommandOption, CommandOptions } from '../lib/types';
@@ -155,40 +156,55 @@ export function convertAPIOptionsToCommandOptions(
 	return parsedOptions;
 }
 
-function allOptionsFlat(options: CommandOption[]) {
-	let newOptions: CommandOption[] = [];
-	for (const option of options) {
-		if (
-			(option.type === ApplicationCommandOptionType.SubcommandGroup ||
-				option.type === ApplicationCommandOptionType.Subcommand) &&
-			option.options
-		) {
-			newOptions.push(...allOptionsFlat(option.options));
-		}
-		newOptions.push(option);
-	}
-	return newOptions;
-}
-
 export async function handleAutocomplete(
 	command: ICommand | undefined,
-	interaction: AutocompleteInteraction,
-	member: GuildMember | undefined
+	autocompleteData: CommandInteractionOption[],
+	member: GuildMember | undefined,
+	user: User,
+	option?: CommandOption
 ): Promise<APIApplicationCommandOptionChoice[]> {
-	if (!command || !interaction) return [];
-	const data = interaction.options.getFocused(true);
-	const optionBeingAutocompleted = allOptionsFlat(command.options).find(o => o.name === data.name);
+	if (!command || !autocompleteData) return [];
+	const data = autocompleteData.find(i => 'focused' in i && i.focused === true) ?? autocompleteData[0];
+	console.log({ data });
+	if (data.type === ApplicationCommandOptionType.SubcommandGroup) {
+		const group = command.options.find(c => c.name === data.name);
+		if (group?.type !== ApplicationCommandOptionType.SubcommandGroup) return [];
+		const subCommand = group.options?.find(
+			c => c.name === data.options?.[0].name && c.type === ApplicationCommandOptionType.Subcommand
+		);
+		if (
+			!subCommand ||
+			!data.options ||
+			!data.options[0] ||
+			subCommand.type !== ApplicationCommandOptionType.Subcommand
+		) {
+			return [];
+		}
+		const option = data.options[0].options?.find(t => (t as any).focused);
+		if (!option) return [];
+		const subSubCommand = subCommand.options?.find(o => o.name === option.name);
+		return handleAutocomplete(command, [option], member, user, subSubCommand);
+	}
+	if (data.type === ApplicationCommandOptionType.Subcommand) {
+		if (!data.options || !data.options[0]) return [];
+		const subCommand = command.options.find(c => c.name === data.name);
+		if (subCommand?.type !== ApplicationCommandOptionType.Subcommand) return [];
+		const option = data.options.find(o => ('focused' in o ? Boolean(o.focused) : false)) ?? data.options[0];
+		const subOption = subCommand.options?.find(c => c.name === option.name);
+		if (!subOption) return [];
+
+		return handleAutocomplete(command, [option], member, user, subOption);
+	}
+
+	const optionBeingAutocompleted = option ?? command.options.find(o => o.name === data.name);
+	console.log({ optionBeingAutocompleted });
 
 	if (
 		optionBeingAutocompleted &&
 		'autocomplete' in optionBeingAutocompleted &&
 		optionBeingAutocompleted.autocomplete !== undefined
 	) {
-		const autocompleteResult = await optionBeingAutocompleted.autocomplete(
-			data.value as never,
-			interaction.user,
-			member
-		);
+		const autocompleteResult = await optionBeingAutocompleted.autocomplete(data.value as never, user, member);
 		return autocompleteResult.slice(0, 25).map(i => ({
 			name: i.name,
 			value: i.value.toString()
