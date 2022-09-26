@@ -165,7 +165,6 @@ export async function handleAutocomplete(
 ): Promise<APIApplicationCommandOptionChoice[]> {
 	if (!command || !autocompleteData) return [];
 	const data = autocompleteData.find(i => 'focused' in i && i.focused === true) ?? autocompleteData[0];
-	console.log({ data });
 	if (data.type === ApplicationCommandOptionType.SubcommandGroup) {
 		const group = command.options.find(c => c.name === data.name);
 		if (group?.type !== ApplicationCommandOptionType.SubcommandGroup) return [];
@@ -197,7 +196,6 @@ export async function handleAutocomplete(
 	}
 
 	const optionBeingAutocompleted = option ?? command.options.find(o => o.name === data.name);
-	console.log({ optionBeingAutocompleted });
 
 	if (
 		optionBeingAutocompleted &&
