@@ -29,6 +29,7 @@ export interface Handlers {
 	preCommand?: (options: {
 		command: ICommand;
 		interaction: ChatInputCommandInteraction;
+		options: CommandOptions;
 	}) => Promise<
 		undefined | { reason: Awaited<InteractionReplyOptions>; silent: boolean; dontRunPostCommand?: boolean }
 	>;
@@ -97,7 +98,8 @@ export class MahojiClient {
 			try {
 				const inhibitedResponse = await this.handlers.preCommand?.({
 					command,
-					interaction
+					interaction,
+					options
 				});
 				if (inhibitedResponse) {
 					if (inhibitedResponse.dontRunPostCommand) runPostCommand = false;
