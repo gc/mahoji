@@ -142,10 +142,13 @@ export function convertAPIOptionsToCommandOptions(
 				parsedOptions[opt.name] = resolvedObjects.roles.get(opt.value as string)!;
 			}
 		} else if (opt.type === ApplicationCommandOptionType.User) {
-			if (resolvedObjects?.users && resolvedObjects.members) {
+			if (resolvedObjects?.users) {
 				parsedOptions[opt.name] = {
 					user: resolvedObjects.users.get(opt.value as string)!,
-					member: resolvedObjects.members.get(opt.value as string)!
+					member:
+						resolvedObjects.members && resolvedObjects.members.has(opt.value as string)
+							? resolvedObjects.members.get(opt.value as string)
+							: null
 				};
 			}
 		} else {

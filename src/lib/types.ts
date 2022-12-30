@@ -55,7 +55,7 @@ export type CommandOption = {
 
 export interface MahojiUserOption {
 	user: User;
-	member: GuildMember | APIInteractionDataResolvedGuildMember;
+	member?: GuildMember | APIInteractionDataResolvedGuildMember;
 }
 
 type MahojiCommandOption =
