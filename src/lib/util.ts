@@ -147,8 +147,8 @@ export function convertAPIOptionsToCommandOptions(
 					user: resolvedObjects.users.get(opt.value as string)!,
 					member:
 						resolvedObjects.members && resolvedObjects.members.has(opt.value as string)
-							? resolvedObjects.members.get(opt.value as string)
-							: null
+							? resolvedObjects.members.get(opt.value as string)!
+							: undefined
 				};
 			}
 		} else {
