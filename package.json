@@ -1,6 +1,6 @@
 {
   "name": "mahoji",
-  "version": "0.0.61",
+  "version": "0.0.7",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc -p src",
