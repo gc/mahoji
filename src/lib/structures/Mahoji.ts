@@ -121,6 +121,9 @@ export class MahojiClient {
 					userID: interaction.user.id
 				});
 				if (!response) return;
+				if (interaction.replied) {
+					return interaction.followUp(response);
+				}
 				if (interaction.deferred) {
 					return interaction.editReply(response);
 				}
